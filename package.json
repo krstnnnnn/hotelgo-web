@@ -1,0 +1,17 @@
+{
+  "name": "hotelgo-web",
+  "private": true,
+  "version": "1.0.0",
+  "description": "HOTELGO staff console (React). A separate app: it only talks to the HOTELGO LavaLust API over HTTP.",
+  "scripts": {
+    "dev": "node build.mjs --serve",
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
+}
