@@ -4,22 +4,35 @@ import { api, signIn } from '../api';
 import { Err, Field, FormModal, Loading, Top, label, peso, useLoad, useToast } from '../ui';
 
 export function Login({ onUser }) {
-  const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const [show, setShow] = useState(false);
   const go = async (e) => {
     e.preventDefault(); setBusy(true); setErr('');
     try { onUser(await signIn(email, pw)); } catch (x) { setErr(x.message); setBusy(false); }
   };
   return (
-    <div className="login">
-      <form className="card" onSubmit={go}>
-        <div className="brand"><Logo size={40} /><div>HOTEL<span>GO</span></div></div>
-        <p className="muted" style={{ marginTop: 0 }}>Staff console. Sign in with your front-desk or owner account.</p>
-        <Err text={err} />
-        <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required autoFocus /></Field>
-        <Field label="Password"><input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" required /></Field>
-        <button className="btn" style={{ width: '100%' }} disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
-        <p style={{ textAlign: 'center', marginBottom: 0 }}><a href="#/availability">Check room availability</a></p>
-      </form>
+    <div className="auth2">
+      <section className="art2">
+        <div className="brand light"><Logo size={42} /><div>HOTEL<span>GO</span><small>Staff console</small></div></div>
+        <span className="chip">STAFF PORTAL · PUERTO GALERA</span>
+        <h1>Run the front desk from one screen.</h1>
+        <ul><li>Live room availability and instant room assignment</li><li>Check guests in and out in two clicks</li><li>Every sign-in is recorded in the audit log</li></ul>
+        <div className="sun" aria-hidden="true" /><div className="wave" aria-hidden="true" /><div className="wave w2" aria-hidden="true" /><div className="wave w3" aria-hidden="true" />
+      </section>
+      <section className="form2">
+        <form className="box" onSubmit={go}>
+          <div className="brand only-small"><Logo size={38} /><div>HOTEL<span>GO</span></div></div>
+          <h1>Welcome back</h1>
+          <p className="muted" style={{ marginTop: 0 }}>Sign in with your front-desk or owner account.</p>
+          <Err text={err} />
+          <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required autoFocus /></Field>
+          <Field label="Password">
+            <div className="pw"><input type={show ? 'text' : 'password'} value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" required />
+              <button type="button" className="eye" onClick={() => setShow(!show)}>{show ? 'Hide' : 'Show'}</button></div>
+          </Field>
+          <button className="btn block" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+          <p style={{ textAlign: 'center', marginBottom: 0 }}><a href="#/availability">Check room availability</a></p>
+        </form>
+      </section>
     </div>
   );
 }

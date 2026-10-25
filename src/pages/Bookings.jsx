@@ -6,7 +6,7 @@ const STATUSES = ['pending_payment', 'confirmed', 'checked_in', 'checked_out', '
 
 export default function Bookings({ user, refParam }) {
   const [status, setStatus] = useState(''); const [q, setQ] = useState(''); const [term, setTerm] = useState('');
-  const [walkin, setWalkin] = useState(false);
+  const [walkin, setWalkin] = useState(refParam === 'new');            // #/bookings/new (from the dashboard button) opens the walk-in form
   const list = useLoad(() => api('GET', '/bookings?' + new URLSearchParams({ status, q: term })), [status, term]);
   return (
     <>
@@ -32,8 +32,8 @@ export default function Bookings({ user, refParam }) {
             ))} />
         )}
       </div>
-      {walkin && <Walkin onClose={() => setWalkin(false)} onDone={(ref) => { list.reload(); location.hash = '#/bookings/' + ref; }} />}
-      {refParam && <Detail key={refParam} bookingRef={refParam} user={user} onChange={list.reload} onClose={() => (location.hash = '#/bookings')} />}
+      {walkin && <Walkin onClose={() => { setWalkin(false); if (refParam === 'new') location.hash = '#/bookings'; }} onDone={(ref) => { list.reload(); location.hash = '#/bookings/' + ref; }} />}
+      {refParam && refParam !== 'new' && <Detail key={refParam} bookingRef={refParam} user={user} onChange={list.reload} onClose={() => (location.hash = '#/bookings')} />}
     </>
   );
 }
