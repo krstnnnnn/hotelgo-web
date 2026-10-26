@@ -64,40 +64,62 @@ export function ChangePassword({ forced, onDone }) {
 }
 
 /* Public: anybody can see which room types are free for a time (no sign-in) */
+const SITE = String((window.HOTELGO_CONFIG && window.HOTELGO_CONFIG.apiUrl) || 'http://localhost:8000/api').replace(/\/api\/?$/, '');
 export function Availability({ signedIn }) {
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   const [q, setQ] = useState({ stay: 'hourly', date: tomorrow, time: '19:00', hours: 3, guests: 2 });
   const [run, setRun] = useState(q);
   const res = useLoad(() => api('GET', '/availability?' + new URLSearchParams(run)), [JSON.stringify(run)]);
   const set = (k) => (e) => setQ({ ...q, [k]: e.target.value });
-  const body = (
+  const rows = res.data ? res.data.data : [];
+  const search = (
+    <form className="pubsearch" onSubmit={(e) => { e.preventDefault(); setRun(q); }}>
+      <Field label="Stay"><select value={q.stay} onChange={set('stay')}><option value="hourly">Hourly</option><option value="overnight">Overnight</option></select></Field>
+      <Field label="Date"><input type="date" value={q.date} onChange={set('date')} min={new Date().toISOString().slice(0, 10)} /></Field>
+      <Field label="Start time"><input type="time" value={q.time} onChange={set('time')} /></Field>
+      {q.stay === 'hourly' && <Field label="Hours"><select value={q.hours} onChange={set('hours')}><option>3</option><option>6</option><option>12</option></select></Field>}
+      <Field label="Guests"><input type="number" min="1" max="10" value={q.guests} onChange={set('guests')} /></Field>
+      <button className="btn">Search rooms</button>
+    </form>
+  );
+  const list = (
     <>
-      <form className="card" onSubmit={(e) => { e.preventDefault(); setRun(q); }} style={{ marginBottom: 16 }}>
-        <div className="grid2" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
-          <Field label="Stay"><select value={q.stay} onChange={set('stay')}><option value="hourly">Hourly</option><option value="overnight">Overnight</option></select></Field>
-          <Field label="Date"><input type="date" value={q.date} onChange={set('date')} min={new Date().toISOString().slice(0, 10)} /></Field>
-          <Field label="Start time"><input type="time" value={q.time} onChange={set('time')} /></Field>
-          {q.stay === 'hourly' && <Field label="Hours"><select value={q.hours} onChange={set('hours')}><option>3</option><option>6</option><option>12</option></select></Field>}
-          <Field label="Guests"><input type="number" min="1" max="10" value={q.guests} onChange={set('guests')} /></Field>
-        </div>
-        <button className="btn">Search</button>
-      </form>
       <Loading state={res} />
-      {res.data && (
-        <div className="cards">
-          {res.data.data.length === 0 && <div className="card empty">No room type fits that many guests.</div>}
-          {res.data.data.map((t) => (
-            <div className="card" key={t.id}>
-              <h3>{t.name}</h3>
+      {res.data && <h2 className="pubh">{rows.length} room type{rows.length === 1 ? '' : 's'} available to browse</h2>}
+      <div className="pubstack">
+        {res.data && rows.length === 0 && <div className="card empty">No room type fits that many guests. Try fewer guests.</div>}
+        {rows.map((t, i) => (
+          <div className={'result' + (t.free < 1 ? ' full' : '')} key={t.id}>
+            <div className={'scene t' + ((i % 3) + 1)}><i /></div>
+            <div className="rbody">
+              <div className="rtop"><h3>{t.name}</h3>
+                {t.free < 1 ? <span className="pill gray">Fully booked</span> : t.free <= 2 ? <span className="pill warn">Only {t.free} left</span> : <span className="pill ok">{t.free} rooms free</span>}</div>
               <p className="muted">{t.description}</p>
-              <p><b>{peso(t.price)}</b><br /><span className="muted">{t.free > 0 ? t.free + ' room(s) free' : 'Fully booked for that time'}</span></p>
+              <div className="chips">{String(t.amenities || '').split(',').map((a) => a.trim()).filter(Boolean).map((a) => <span className="chip" key={a}>{a}</span>)}
+                <span className="chip">Up to {t.max_guests} guests</span></div>
             </div>
-          ))}
-        </div>
-      )}
+            <div className="buy">
+              <div className="price">{peso(t.price)}</div>
+              <div className="muted small">{run.stay === 'overnight' ? 'overnight' : run.hours + ' hrs'}</div>
+              {t.free > 0 ? <a className="btn" href={SITE + '/book?' + new URLSearchParams({ stay: run.stay, date: run.date, time: run.time, hours: run.hours, guests: run.guests, type: t.id })}>Select room</a>
+                : <span className="muted small">Try another time</span>}
+            </div>
+          </div>
+        ))}
+      </div>
     </>
   );
-  return signedIn ? <><Top title="Availability" sub="What a guest would see for a chosen time." />{body}</>
-    : <div className="login" style={{ alignItems: 'start' }}><div style={{ width: '100%', maxWidth: 900 }}><div className="row" style={{ justifyContent: 'space-between', color: '#fff', marginBottom: 12 }}><h1>Room availability</h1><a style={{ color: '#fff' }} href="#/">Staff sign in</a></div>{body}</div></div>;
+  if (signedIn) return <><Top title="Availability" sub="What a guest would see for a chosen time." /><div className="card" style={{ marginBottom: 16 }}>{search}</div>{list}</>;
+  return (
+    <div className="pub">
+      <header className="pubhero">
+        <div className="pubnav"><div className="brand"><Logo size={36} /><div>HOTEL<span>GO</span></div></div><a href="#/">Staff sign in</a></div>
+        <h1>Find a room for <em>tonight</em></h1>
+        <p>Pick your time and see what is free right now. Rooms are assigned automatically and sent to you by SMS and email.</p>
+      </header>
+      <main className="pubmain"><div className="card pubcard">{search}</div>{list}</main>
+      <footer className="pubfoot">HOTELGO · Puerto Galera</footer>
+    </div>
+  );
 }
 export { label };
