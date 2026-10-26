@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import Bookings from './pages/Bookings';
 import Guests from './pages/Guests';
 import { RoomTypes, Rooms } from './pages/Catalog';
+import { Hotels } from './pages/Hotels';
 import { Audit, Notifications, Payments, Reports, Settings, Staff } from './pages/Owner';
 
 /* tiny hash router: #/bookings/HG-ABC123 -> ['bookings', 'HG-ABC123'] */
@@ -23,7 +24,7 @@ function useRoute() {
 const NAV = [
   ['dashboard', 'Dashboard', 'staff', 'dashboard'], ['bookings', 'Reservations', 'staff', 'bookings'], ['guests', 'Guests', 'staff', 'guests'], ['availability', 'Availability', 'staff', 'availability'],
   ['types', 'Room types', 'staff', 'types'], ['rooms', 'Rooms', 'staff', 'rooms'],
-  ['payments', 'Payments', 'admin', 'payments'], ['notifications', 'Notifications', 'admin', 'notifications'], ['reports', 'Reports', 'admin', 'reports'], ['staff', 'Staff', 'admin', 'staff'], ['settings', 'Settings', 'admin', 'settings'], ['audit', 'Audit log', 'admin', 'audit'],
+  ['hotels', 'Hotels', 'admin', 'hotel'], ['payments', 'Payments', 'admin', 'payments'], ['notifications', 'Notifications', 'admin', 'notifications'], ['reports', 'Reports', 'admin', 'reports'], ['staff', 'Staff', 'admin', 'staff'], ['settings', 'Settings', 'platform', 'settings'], ['audit', 'Audit log', 'admin', 'audit'],
   ['account', 'My account', 'staff', 'account'],
 ];
 const initials = (n) => String(n || '?').split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
@@ -31,21 +32,22 @@ const initials = (n) => String(n || '?').split(/\s+/).slice(0, 2).map((w) => w[0
 function Shell({ user, route, onOut }) {
   const [open, setOpen] = useState(false);
   const [page, arg] = route;
-  const admin = user.role === 'admin';
+  const admin = user.role === 'admin'; const platform = !!user.platform;
   const view = () => {
     switch (page) {
-      case 'dashboard': return <Dashboard />;
+      case 'dashboard': return <Dashboard user={user} />;
       case 'bookings': return <Bookings user={user} refParam={arg} />;
       case 'guests': return <Guests user={user} />;
       case 'availability': return <Availability signedIn />;
       case 'types': return <RoomTypes user={user} />;
       case 'rooms': return <Rooms user={user} />;
       case 'account': return <ChangePassword />;
-      case 'payments': return admin ? <Payments /> : <NoAccess />;
+      case 'hotels': return admin ? <Hotels user={user} /> : <NoAccess />;
+      case 'payments': return admin ? <Payments user={user} /> : <NoAccess />;
       case 'notifications': return admin ? <Notifications /> : <NoAccess />;
-      case 'reports': return admin ? <Reports /> : <NoAccess />;
+      case 'reports': return admin ? <Reports user={user} /> : <NoAccess />;
       case 'staff': return admin ? <Staff user={user} /> : <NoAccess />;
-      case 'settings': return admin ? <Settings /> : <NoAccess />;
+      case 'settings': return platform ? <Settings /> : <NoAccess />;
       case 'audit': return admin ? <Audit /> : <NoAccess />;
       default: return <div className="card empty">Page not found.</div>;
     }
@@ -53,15 +55,15 @@ function Shell({ user, route, onOut }) {
   return (
     <div className="shell">
       <aside className={'side' + (open ? ' open' : '')}>
-        <div className="brand"><Logo /><div>HOTEL<span>GO</span><small>Staff console</small></div></div>
+        <div className="brand"><Logo /><div>HOTEL<span>GO</span><small>{user.hotel_name || 'Platform console'}</small></div></div>
         <nav className="nav" onClick={() => setOpen(false)}>
-          {NAV.filter((n) => n[2] === 'staff' || admin).map(([p, t, , ic]) => (
-            <span key={p}>{p === 'payments' && <small>Owner</small>}{p === 'account' && <small>Account</small>}<a href={'#/' + p} className={page === p ? 'on' : ''}><Icon n={ic} />{t}</a></span>
+          {NAV.filter((n) => n[2] === 'staff' || (n[2] === 'admin' && admin) || (n[2] === 'platform' && platform)).map(([p, t, , ic]) => (
+            <span key={p}>{p === 'payments' && <small>Owner</small>}{p === 'account' && <small>Account</small>}<a href={'#/' + p} className={page === p ? 'on' : ''}><Icon n={ic} />{p === 'hotels' && !platform ? 'My hotel' : t}</a></span>
           ))}
         </nav>
         <div className="who">
           <div className="av">{initials(user.full_name)}</div>
-          <div className="wn"><b>{user.full_name}</b><span>{user.role === 'admin' ? 'Owner' : 'Front desk'}</span></div>
+          <div className="wn"><b>{user.full_name}</b><span>{user.platform ? 'Platform admin' : user.role === 'admin' ? 'Hotel owner' : 'Front desk'}</span></div>
           <button className="ib" title="Sign out" aria-label="Sign out" onClick={onOut}><Icon n="out" /></button>
         </div>
       </aside>

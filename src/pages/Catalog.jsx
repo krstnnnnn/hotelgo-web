@@ -2,41 +2,43 @@ import { useState } from 'react';
 import { api } from '../api';
 import { Confirm, Field, FormModal, Loading, Pill, Table, Top, peso, useLoad, useToast } from '../ui';
 
-const blankType = { name: '', description: '', amenities: '', max_guests: 2, price_3h: '', price_6h: '', price_12h: '', price_overnight: '', cleaning_buffer_min: 15, is_active: 1 };
+const blankType = { hotel_id: '', name: '', description: '', amenities: '', max_guests: 2, price_3h: '', price_6h: '', price_12h: '', price_overnight: '', cleaning_buffer_min: 15, is_active: 1 };
 
 export function RoomTypes({ user }) {
   const list = useLoad(() => api('GET', '/types'));
   const [edit, setEdit] = useState(null); const [del, setDel] = useState(null); const toast = useToast();
-  const admin = user.role === 'admin';
+  const admin = user.role === 'admin'; const platform = !!user.platform;
+  const hotels = useLoad(() => (platform ? api('GET', '/manage/hotels') : Promise.resolve({ data: [] })));
   return (
     <>
-      <Top title="Room types & rates" sub="Prices guests see on the website.">{admin && <button className="btn" onClick={() => setEdit({ ...blankType })}>+ New room type</button>}</Top>
+      <Top title="Room types & rates" sub="Prices guests see on the website.">{admin && <button className="btn" onClick={() => setEdit({ ...blankType, hotel_id: hotels.data?.data?.[0]?.id || '' })}>+ New room type</button>}</Top>
       <div className="card">
         <Loading state={list} />
-        {list.data && <Table head={['Name', 'Guests', '3h', '6h', '12h', 'Overnight', 'Buffer', 'Visible', '']} empty="No room types yet."
+        {list.data && <Table head={[...(platform ? ['Hotel'] : []), 'Name', 'Guests', '3h', '6h', '12h', 'Overnight', 'Buffer', 'Visible', '']} empty="No room types yet."
           rows={list.data.data.map((t) => (
-            <tr key={t.id}><td><b>{t.name}</b></td><td>{t.max_guests}</td><td>{peso(t.price_3h)}</td><td>{peso(t.price_6h)}</td><td>{peso(t.price_12h)}</td><td>{peso(t.price_overnight)}</td><td>{t.cleaning_buffer_min} min</td>
+            <tr key={t.id}>{platform && <td>{t.hotel_name}</td>}<td><b>{t.name}</b></td><td>{t.max_guests}</td><td>{peso(t.price_3h)}</td><td>{peso(t.price_6h)}</td><td>{peso(t.price_12h)}</td><td>{peso(t.price_overnight)}</td><td>{t.cleaning_buffer_min} min</td>
               <td><Pill v={Number(t.is_active) ? 'active' : 'off'} text={Number(t.is_active) ? 'Yes' : 'Hidden'} /></td>
               <td className="row">{admin && <><button className="btn small" onClick={() => setEdit(t)}>Edit</button><button className="btn small danger" onClick={() => setDel(t)}>Delete</button></>}</td></tr>
           ))} />}
       </div>
-      {edit && <TypeForm t={edit} onClose={() => setEdit(null)} onSaved={list.reload} />}
+      {edit && <TypeForm t={edit} hotels={platform ? hotels.data?.data || [] : null} onClose={() => setEdit(null)} onSaved={list.reload} />}
       {del && <Confirm title={'Delete ' + del.name} text="A type that still has rooms or bookings cannot be deleted. Untick “Visible to guests” to hide it instead." onClose={() => setDel(null)}
         onYes={async () => { await api('DELETE', '/types/' + del.id); toast('Room type deleted.'); list.reload(); }} />}
     </>
   );
 }
 
-function TypeForm({ t, onClose, onSaved }) {
+function TypeForm({ t, hotels, onClose, onSaved }) {
   const [f, setF] = useState(t); const toast = useToast();
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const save = async () => {
-    const body = { ...f, is_active: Number(f.is_active) ? 1 : 0 };
+    const body = { ...f, hotel_id: Number(f.hotel_id) || undefined, is_active: Number(f.is_active) ? 1 : 0 };
     if (t.id) await api('PUT', '/types/' + t.id, body); else await api('POST', '/types', body);
     toast('Room type saved.'); onSaved();
   };
   return (
     <FormModal title={t.id ? 'Edit room type' : 'New room type'} onClose={onClose} onSave={save}>
+      {hotels && <Field label="Hotel"><select value={f.hotel_id} onChange={set('hotel_id')} required><option value="">Choose…</option>{hotels.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select></Field>}
       <Field label="Name"><input value={f.name} onChange={set('name')} required minLength={2} maxLength={80} /></Field>
       <Field label="Description"><textarea rows="2" maxLength={500} value={f.description || ''} onChange={set('description')} /></Field>
       <Field label="Amenities (comma separated)"><input value={f.amenities || ''} onChange={set('amenities')} maxLength={250} /></Field>
@@ -62,9 +64,9 @@ export function Rooms({ user }) {
       <Top title="Rooms" sub="Every physical room.">{admin && <button className="btn" onClick={() => setEdit({ room_no: '', room_type_id: types.data?.data?.[0]?.id || '', floor: 1, status: 'active' })}>+ New room</button>}</Top>
       <div className="card">
         <Loading state={list} />
-        {list.data && <Table head={['Room', 'Type', 'Floor', 'Status', '']} empty="No rooms yet."
+        {list.data && <Table head={['Room', ...(user.platform ? ['Hotel'] : []), 'Type', 'Floor', 'Status', '']} empty="No rooms yet."
           rows={list.data.data.map((r) => (
-            <tr key={r.id}><td><b>{r.room_no}</b></td><td>{r.type_name}</td><td>{r.floor}</td><td><Pill v={r.status} /></td>
+            <tr key={r.id}><td><b>{r.room_no}</b></td>{user.platform && <td>{r.hotel_name}</td>}<td>{r.type_name}</td><td>{r.floor}</td><td><Pill v={r.status} /></td>
               <td className="row">{admin && <><button className="btn small" onClick={() => setEdit(r)}>Edit</button><button className="btn small danger" onClick={() => setDel(r)}>Delete</button></>}</td></tr>
           ))} />}
       </div>
@@ -87,7 +89,7 @@ function RoomForm({ r, types, onClose, onSaved }) {
     <FormModal title={r.id ? 'Edit room' : 'New room'} onClose={onClose} onSave={save}>
       <div className="grid2">
         <Field label="Room number"><input value={f.room_no} onChange={set('room_no')} required maxLength={10} /></Field>
-        <Field label="Room type"><select value={f.room_type_id} onChange={set('room_type_id')} required><option value="">Choose…</option>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
+        <Field label="Room type"><select value={f.room_type_id} onChange={set('room_type_id')} required><option value="">Choose…</option>{types.map((t) => <option key={t.id} value={t.id}>{t.hotel_name && types.some((x) => x.hotel_id !== t.hotel_id) ? t.hotel_name + ' · ' : ''}{t.name}</option>)}</select></Field>
         <Field label="Floor"><input type="number" min="1" max="50" value={f.floor} onChange={set('floor')} required /></Field>
         <Field label="Status"><select value={f.status} onChange={set('status')}><option value="active">Active</option><option value="maintenance">Maintenance</option></select></Field>
       </div>

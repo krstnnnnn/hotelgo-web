@@ -39,6 +39,7 @@ function Layout({ landing, signedIn, children }) {
         <a className="logo" href="#/"><i><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z" fill="#fff" /><circle cx="12" cy="10" r="3" fill="#0E7C86" /></svg></i><span>HOTEL<b>GO</b></span></a>
         <button className="burger" type="button" aria-label="Menu" aria-expanded={open} onClick={() => setOpen(!open)}><span /><span /><span /></button>
         <nav className={'nav-links' + (open ? ' open' : '')} id="navlinks" aria-label="Main" onClick={(e) => { if (e.target.closest('a')) setOpen(false); }}>
+          <Jump className="link" id="hotels">Hotels</Jump>
           <a className="link" href="#/search">Rooms</a>
           <Jump className="link" id="offer">What we offer</Jump>
           <Jump className="link" id="map">Map</Jump>
@@ -64,8 +65,8 @@ function Layout({ landing, signedIn, children }) {
 }
 
 /* ---- search form (same as the PHP site) ---- */
-function SearchForm({ init, onGo }) {
-  const [q, setQ] = useState({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2, ...init });
+function SearchForm({ init, onGo, areas = [] }) {
+  const [q, setQ] = useState({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2, area: '', ...init });
   const set = (k) => (e) => setQ({ ...q, [k]: e.target.value });
   const times = []; for (let m = 0; m < 1440; m += 30) { const h = Math.floor(m / 60), mm = m % 60; times.push([`${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`, `${h % 12 || 12}:${String(mm).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`]); }
   return (
@@ -79,19 +80,27 @@ function SearchForm({ init, onGo }) {
         {q.stay === 'hourly' && <div><label htmlFor="time">Start time</label><select id="time" value={q.time} onChange={set('time')}>{times.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></div>}
         {q.stay === 'hourly' && <div><label htmlFor="hours">Duration</label><select id="hours" value={q.hours} onChange={set('hours')}>{[3, 6, 12].map((h) => <option key={h} value={h}>{h} hours</option>)}</select></div>}
         <div><label htmlFor="guests">Guests</label><select id="guests" value={q.guests} onChange={set('guests')}>{Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n} guest{n > 1 ? 's' : ''}</option>)}</select></div>
-        <div />
+        <div><label htmlFor="area">Area</label><select id="area" value={q.area || ''} onChange={set('area')}><option value="">All of Puerto Galera</option>{areas.map((a) => <option key={a} value={a}>{a}</option>)}</select></div>
         <button className="btn btn-amber" type="submit">Check availability</button>
       </div>
     </form>
   );
 }
-const goSearch = (q) => { location.hash = '#/search?' + new URLSearchParams(q).toString(); };
+const goSearch = (q) => { const c = Object.fromEntries(Object.entries(q).filter(([, v]) => v !== '' && v !== undefined && v !== null)); location.hash = '#/search?' + new URLSearchParams(c).toString(); };
+const useHotels = () => {
+  const [h, setH] = useState(null);
+  useEffect(() => { let live = true; api('GET', '/hotels').then((r) => live && setH(r), () => live && setH({ data: [], areas: [] })); return () => { live = false; }; }, []);
+  return h;
+};
 
 /* ---- room search results ---- */
 export function SearchPage({ signedIn }) {
   const raw = new URLSearchParams(location.hash.split('?')[1] || '');
   const p = { stay: raw.get('stay') === 'overnight' ? 'overnight' : 'hourly', date: raw.get('date') || plus(0), time: raw.get('time') || '19:00', hours: raw.get('hours') || '3', guests: raw.get('guests') || '2' };
+  if (raw.get('area')) p.area = raw.get('area');
+  if (raw.get('hotel')) p.hotel = raw.get('hotel');
   const key = JSON.stringify(p);
+  const hot = useHotels();
   const [st, setSt] = useState({ loading: true });
   useEffect(() => {
     let live = true; setSt({ loading: true });
@@ -105,16 +114,16 @@ export function SearchPage({ signedIn }) {
   return (
     <Layout signedIn={signedIn}>
       <div className="container section" style={{ paddingTop: 100 }}>
-        <div className="card" style={{ marginBottom: 20 }}><SearchForm key={key} init={p} onGo={goSearch} /></div>
+        <div className="card" style={{ marginBottom: 20 }}><SearchForm key={key} init={p} onGo={goSearch} areas={hot ? hot.areas : []} /></div>
         {st.error && <div className="flash bad">{st.error}</div>}
         {st.loading && <div className="card center">Looking for free rooms…</div>}
         {st.data && <>
-          <h2>{rows.length} room type{rows.length === 1 ? '' : 's'} for {fmt(st.w.start)} – {fmt(st.w.end)}</h2>
+          <h2>{rows.length} room type{rows.length === 1 ? '' : 's'} in {new Set(rows.map((r) => r.hotel_id)).size} hotel{new Set(rows.map((r) => r.hotel_id)).size === 1 ? '' : 's'} for {fmt(st.w.start)} – {fmt(st.w.end)}</h2>
           <div className="flash info">You choose a room <b>type</b>. The exact room is <b>assigned automatically</b> and sent to you by SMS and email.</div>
           <div className="stack" style={{ marginTop: 20 }}>
             {rows.map((t, i) => (
               <div className={'result' + (t.free < 1 ? ' full' : '')} key={t.id}><div className={'scene t' + ((i % 3) + 1)}><i /></div>
-                <div className="body"><div className="row"><h3 style={{ margin: 0 }}>{t.name}</h3>
+                <div className="body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>{t.hotel_name} · {t.hotel_area}</div><div className="row"><h3 style={{ margin: 0 }}>{t.name}</h3>
                   {t.free < 1 ? <span className="pill gray">Fully booked</span> : t.free <= 2 ? <span className="pill warn">Only {t.free} left</span> : <span className="pill ok">{t.free} rooms free</span>}</div>
                   <p className="mute">{t.description}</p>
                   <div className="chips">{String(t.amenities || '').split(',').map((a) => a.trim()).filter(Boolean).map((a) => <span className="chip" key={a}>{a}</span>)}<span className="chip">Up to {t.max_guests} guests</span></div>
@@ -122,7 +131,7 @@ export function SearchPage({ signedIn }) {
                 <div className="buy"><div className="price">{peso(t.price)}</div><div className="small mute">{p.stay === 'overnight' ? 'overnight' : st.w.hours + ' hrs'} · fee added at checkout</div>
                   {t.free > 0 ? <a className="btn" style={{ marginTop: 12 }} href={SITE + '/book?' + new URLSearchParams({ ...p, type: t.id })}>Select room</a> : <span className="small mute">Try another time</span>}</div></div>
             ))}
-            {rows.length === 0 && <div className="card center">No room type fits that many guests. Try fewer guests.</div>}
+            {rows.length === 0 && <div className="card center">No room type fits that. Try fewer guests or another area.</div>}
           </div>
         </>}
       </div>
@@ -151,6 +160,7 @@ const osm = (la, lo, d) => 'https://www.openstreetmap.org/export/embed.html?bbox
 export function Landing({ signedIn }) {
   const c = cfg.site;
   const [types, setTypes] = useState(null);
+  const hot = useHotels(); const hotels = hot ? hot.data : null;
   const [place, setPlace] = useState(0);
   const [voice, setVoice] = useState(0);
   const [box, setBox] = useState(-1);
@@ -189,7 +199,7 @@ export function Landing({ signedIn }) {
     return () => { document.body.style.overflow = ''; document.removeEventListener('keydown', k); };
   }, [box]);
 
-  const places = [{ name: c.name, area: c.address, lat: c.lat, lng: c.lng, src: osm(c.lat, c.lng, 0.012) }, { name: 'All of Puerto Galera', area: 'The whole municipality', src: osm(13.5, 120.954, 0.075) }];
+  const places = [...(hotels || []).map((h) => ({ name: h.name, area: [h.area, h.address].filter(Boolean).join(' · '), src: osm(h.lat, h.lng, 0.012) })), { name: 'All of Puerto Galera', area: 'The whole municipality', src: osm(13.5, 120.954, 0.075) }];
   const send = (e) => {
     e.preventDefault(); const f = e.target.elements;
     const n = f.name.value.trim(), m = f.email.value.trim(), t = f.message.value.trim();
@@ -212,7 +222,7 @@ export function Landing({ signedIn }) {
         </div>
       </section>
 
-      <section className="search" id="search"><div className="container"><div className="card reveal"><SearchForm onGo={goSearch} /></div></div></section>
+      <section className="search" id="search"><div className="container"><div className="card reveal"><SearchForm onGo={goSearch} areas={hot ? hot.areas : []} /></div></div></section>
 
       <section className="section lp-about" id="about"><div className="container grid g2 lp-center">
         <div className="lp-frame reveal"><img src={img('g5.svg')} alt="A Puerto Galera beach" loading="lazy" /><span className="lp-badge"><b>24/7</b><small>online<br />booking</small></span></div>
@@ -225,20 +235,35 @@ export function Landing({ signedIn }) {
       <section className="lp-bandq"><img className="lp-bandq-img" src={img('g1.svg')} alt="" loading="lazy" data-parallax2 /><div className="lp-bandq-shade" />
         <div className="container center reveal"><blockquote>“Your stay, your hours.<br />The sea does the rest.”</blockquote><p>HOTELGO · Puerto Galera</p></div></section>
 
-      <section className="section" id="rooms"><div className="container"><div className="center"><div className="eyebrow reveal">Accommodations</div><h2 className="reveal">Our <em>Rooms &amp; Suites</em></h2>
-        <p className="mute reveal" style={{ maxWidth: 620, margin: '0 auto' }}>Each room is a quiet place to rest. Prices are the room rate; a small online booking fee applies at checkout.</p></div>
+      <section className="section" id="hotels"><div className="container"><div className="center"><div className="eyebrow reveal">One platform, many hotels</div><h2 className="reveal">Hotels across <em>Puerto Galera</em></h2>
+        <p className="mute reveal" style={{ maxWidth: 640, margin: '0 auto' }}>Compare hotels in Sabang, White Beach, Talipanan and more. Pick the area you like, then book a room in one place.</p></div>
         <div className="grid g3 lp-rooms">
-          {types === null && <div className="card center" style={{ gridColumn: '1/-1' }}>Loading rooms…</div>}
-          {types && types.length === 0 && <div className="card center" style={{ gridColumn: '1/-1' }}>Rooms could not be loaded right now. Please try again in a moment.</div>}
-          {(types || []).map((t, i) => (
-            <article className={'card flat lp-room reveal d' + (i % 3)} key={t.id}>
-              <div className="lp-room-img"><img src={img(['g3.svg', 'g1.svg', 'g5.svg', 'g4.svg'][i % 4])} alt={t.name} loading="lazy" /><span className="lp-tag">From {peso(t.p3)} / 3 hrs</span></div>
-              <div className="lp-room-body"><h3>{t.name}</h3><p className="mute small">{t.description}</p>
-                <ul className="lp-amen">{String(t.amenities || '').split(',').slice(0, 4).map((a) => <li key={a}>{a.trim()}</li>)}<li>Up to {t.max_guests} guests</li></ul>
-                <div className="lp-prices"><div><span className="small mute">Overnight</span><b>{peso(t.pn)}</b></div><a className="btn btn-sm" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2 })}>Book now</a></div></div>
+          {hotels === null && <div className="card center" style={{ gridColumn: '1/-1' }}>Loading hotels…</div>}
+          {hotels && hotels.length === 0 && <div className="card center" style={{ gridColumn: '1/-1' }}>No hotels to show right now.</div>}
+          {(hotels || []).map((h, i) => (
+            <article className={'card flat lp-room reveal d' + (i % 3)} key={h.id}>
+              <div className="lp-room-body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{h.area}</div><h3>{h.name}</h3><p className="mute small">{h.description}</p>
+                <div className="lp-prices"><div><span className="small mute">From</span><b>{peso(h.from_price)} / 3 hrs</b></div><a className="btn btn-sm" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2, hotel: h.id })}>View rooms</a></div></div>
             </article>
           ))}
         </div></div></section>
+
+      <section className="section" id="rooms"><div className="container"><div className="center"><div className="eyebrow reveal">Accommodations</div><h2 className="reveal">Our <em>Rooms &amp; Suites</em></h2>
+        <p className="mute reveal" style={{ maxWidth: 620, margin: '0 auto' }}>Each room is a quiet place to rest. Prices are the room rate set by each hotel; a small online booking fee applies at checkout.</p></div>
+        <div className="grid g3 lp-rooms">
+          {types === null && <div className="card center" style={{ gridColumn: '1/-1' }}>Loading rooms…</div>}
+          {types && types.length === 0 && <div className="card center" style={{ gridColumn: '1/-1' }}>Rooms could not be loaded right now. Please try again in a moment.</div>}
+          {(types || []).slice(0, 6).map((t, i) => (
+            <article className={'card flat lp-room reveal d' + (i % 3)} key={t.id}>
+              <div className="lp-room-img"><img src={img(['g3.svg', 'g1.svg', 'g5.svg', 'g4.svg'][i % 4])} alt={t.name} loading="lazy" /><span className="lp-tag">From {peso(t.p3)} / 3 hrs</span></div>
+              <div className="lp-room-body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t.hotel_name} · {t.hotel_area}</div><h3>{t.name}</h3><p className="mute small">{t.description}</p>
+                <ul className="lp-amen">{String(t.amenities || '').split(',').slice(0, 4).map((a) => <li key={a}>{a.trim()}</li>)}<li>Up to {t.max_guests} guests</li></ul>
+                <div className="lp-prices"><div><span className="small mute">Overnight</span><b>{peso(t.pn)}</b></div><a className="btn btn-sm" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2, hotel: t.hotel_id })}>Book now</a></div></div>
+            </article>
+          ))}
+        </div>
+        {types && types.length > 6 && <p className="center" style={{ marginTop: 24 }}><a className="btn btn-out" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2 })}>See all {types.length} room types</a></p>}
+        </div></section>
 
       <section className="section lp-dark" id="offer"><div className="container"><div className="center"><div className="eyebrow reveal" style={{ color: '#F5A524' }}>What we offer</div><h2 className="reveal">Everything for <em>a short stay</em></h2></div>
         <div className="grid g3 lp-offers">{OFFERS.map(([h, d, path], i) => (
@@ -257,12 +282,12 @@ export function Landing({ signedIn }) {
         <p className="mute reveal" style={{ maxWidth: 640, margin: '0 auto' }}>From the town proper to the beaches and dive spots, pick a place to see it on the map.</p></div>
         <div className="lp-map reveal">
           <div className="lp-map-side">
-            <div className="label" style={{ marginBottom: 8 }}>Our motels</div>
-            {places.map((pl, i) => <button type="button" key={pl.name} className={'lp-place' + (place === i ? ' on' : '')} onClick={() => setPlace(i)}><b>{pl.name}</b><span>{pl.area}</span></button>)}
+            <div className="label" style={{ marginBottom: 8 }}>Our hotels</div>
+            {places.map((pl, i) => <button type="button" key={pl.name + i} className={'lp-place' + (place === i ? ' on' : '')} onClick={() => setPlace(i)}><b>{pl.name}</b><span>{pl.area}</span></button>)}
             <div className="label" style={{ margin: '16px 0 8px' }}>Explore an area</div>
             <div className="chips">{c.areas.map((a) => <a className="chip" key={a} target="_blank" rel="noopener noreferrer" href={'https://www.openstreetmap.org/search?query=' + encodeURIComponent(a + ', Puerto Galera')}>{a} ↗</a>)}</div>
           </div>
-          <div className="lp-map-frame"><iframe title="Map of Puerto Galera" loading="lazy" referrerPolicy="no-referrer" src={places[place].src} /></div>
+          <div className="lp-map-frame"><iframe title="Map of Puerto Galera" loading="lazy" referrerPolicy="no-referrer" src={(places[place] || places[places.length - 1]).src} /></div>
         </div></div></section>
 
       <section className="section" id="gallery" style={{ paddingTop: 20 }}><div className="container"><div className="center"><div className="eyebrow reveal">Visual stories</div><h2 className="reveal">Our <em>Gallery</em></h2></div>

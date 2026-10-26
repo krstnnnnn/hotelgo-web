@@ -53,3 +53,9 @@ The staff console has **no link anywhere** on the website. Staff open `https://Y
 * Local: `public/config.js` -> `staffPath` (default `door-local-7k3m`) -> http://localhost:5173/#/door-local-7k3m
 * Render Static Site: add the environment variable `STAFF_PATH` (one secret word, 8+ letters/numbers) next to `API_URL`, then redeploy.
 * Any other address (`#/admin`, `#/dashboard` ...) just shows the website to people who are not signed in.
+
+
+## Many hotels
+
+The landing page lists every hotel (from `GET /api/hotels`), the map shows all of them, and guests can search by area or hotel.
+In the staff console the **Hotels** page is for the platform admin (all hotels) or the hotel owner ("My hotel"). Front-desk staff only see their own hotel everywhere.

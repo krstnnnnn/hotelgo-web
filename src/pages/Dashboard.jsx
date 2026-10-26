@@ -4,13 +4,13 @@ import { Loading, Pill, Top, label, peso, stay, useLoad } from '../ui';
 
 const clock = (s) => new Date(String(s).replace(' ', 'T')).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
 
-export default function Dashboard() {
+export default function Dashboard({ user }) {
   const d = useLoad(() => api('GET', '/dashboard'));
   const x = d.data && { ...d.data, board: d.data.board || [], upcoming: d.data.upcoming || [], notes: d.data.notes || [], count: d.data.count || {} };
   const today = new Date().toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   return (
     <>
-      <Top title="Dashboard" sub={today}>
+      <Top title="Dashboard" sub={(user && user.hotel_name ? user.hotel_name + ' · ' : user && user.platform ? 'All hotels · ' : '') + today}>
         <button className="btn ghost" onClick={d.reload}><Icon n="refresh" size={15} /> Refresh</button>
         <a className="btn" href="#/bookings/new">+ Walk-in booking</a>
       </Top>
@@ -30,7 +30,7 @@ export default function Dashboard() {
               <div className="tiles">
                 {x.board.map((r) => (
                   <div key={r.id} className={'tile ' + r.state} title={r.note}>
-                    <b>{r.room_no}</b><span>{r.type_name}</span><em>{label(r.state)}</em>
+                    <b>{r.room_no}</b><span>{user && user.platform && r.hotel_name ? r.hotel_name + ' · ' : ''}{r.type_name}</span><em>{label(r.state)}</em>
                   </div>
                 ))}
               </div>

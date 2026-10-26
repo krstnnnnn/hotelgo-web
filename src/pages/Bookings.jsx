@@ -23,10 +23,10 @@ export default function Bookings({ user, refParam }) {
       <div className="card">
         <Loading state={list} />
         {list.data && (
-          <Table head={['Booking', 'Guest', 'Room', 'Stay', 'Starts', 'Total', 'Status']} empty="No bookings match."
+          <Table head={['Booking', 'Guest', ...(user.platform ? ['Hotel'] : []), 'Room', 'Stay', 'Starts', 'Total', 'Status']} empty="No bookings match."
             rows={list.data.data.map((b) => (
               <tr key={b.booking_ref} className="click" onClick={() => (location.hash = '#/bookings/' + b.booking_ref)}>
-                <td><b>{b.booking_ref}</b></td><td>{b.guest_name}<br /><span className="muted">{b.guest_mobile}</span></td><td>{b.room_no || '—'} · {b.type_name}</td>
+                <td><b>{b.booking_ref}</b></td><td>{b.guest_name}<br /><span className="muted">{b.guest_mobile}</span></td>{user.platform && <td>{b.hotel_name}</td>}<td>{b.room_no || '—'} · {b.type_name}</td>
                 <td>{stay(b)}</td><td>{when(b.start_at)}</td><td>{peso(b.total)}</td><td><Pill v={b.status} /></td>
               </tr>
             ))} />
