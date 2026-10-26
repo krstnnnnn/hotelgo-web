@@ -2,6 +2,8 @@ import { Component, StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { restore, signOut } from './api';
 import { Toasts } from './ui';
+import { Landing, SearchPage, useSkin } from './site/Site';
+import { cfg } from './site/config';
 import { Icon, Logo } from './icons';
 import { Availability, ChangePassword, Login } from './pages/Auth';
 import Dashboard from './pages/Dashboard';
@@ -12,14 +14,14 @@ import { Audit, Notifications, Payments, Reports, Settings, Staff } from './page
 
 /* tiny hash router: #/bookings/HG-ABC123 -> ['bookings', 'HG-ABC123'] */
 function useRoute() {
-  const read = () => location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  const read = () => location.hash.replace(/^#\/?/, '').split('?')[0].split('/').filter(Boolean);
   const [r, setR] = useState(read);
   useEffect(() => { const f = () => setR(read()); window.addEventListener('hashchange', f); return () => window.removeEventListener('hashchange', f); }, []);
   return r;
 }
 
 const NAV = [
-  ['', 'Dashboard', 'staff', 'dashboard'], ['bookings', 'Reservations', 'staff', 'bookings'], ['guests', 'Guests', 'staff', 'guests'], ['availability', 'Availability', 'staff', 'availability'],
+  ['dashboard', 'Dashboard', 'staff', 'dashboard'], ['bookings', 'Reservations', 'staff', 'bookings'], ['guests', 'Guests', 'staff', 'guests'], ['availability', 'Availability', 'staff', 'availability'],
   ['types', 'Room types', 'staff', 'types'], ['rooms', 'Rooms', 'staff', 'rooms'],
   ['payments', 'Payments', 'admin', 'payments'], ['notifications', 'Notifications', 'admin', 'notifications'], ['reports', 'Reports', 'admin', 'reports'], ['staff', 'Staff', 'admin', 'staff'], ['settings', 'Settings', 'admin', 'settings'], ['audit', 'Audit log', 'admin', 'audit'],
   ['account', 'My account', 'staff', 'account'],
@@ -31,8 +33,8 @@ function Shell({ user, route, onOut }) {
   const [page, arg] = route;
   const admin = user.role === 'admin';
   const view = () => {
-    switch (page || '') {
-      case '': return <Dashboard />;
+    switch (page) {
+      case 'dashboard': return <Dashboard />;
       case 'bookings': return <Bookings user={user} refParam={arg} />;
       case 'guests': return <Guests user={user} />;
       case 'availability': return <Availability signedIn />;
@@ -54,7 +56,7 @@ function Shell({ user, route, onOut }) {
         <div className="brand"><Logo /><div>HOTEL<span>GO</span><small>Staff console</small></div></div>
         <nav className="nav" onClick={() => setOpen(false)}>
           {NAV.filter((n) => n[2] === 'staff' || admin).map(([p, t, , ic]) => (
-            <span key={p}>{p === 'payments' && <small>Owner</small>}{p === 'account' && <small>Account</small>}<a href={'#/' + p} className={(page || '') === p ? 'on' : ''}><Icon n={ic} />{t}</a></span>
+            <span key={p}>{p === 'payments' && <small>Owner</small>}{p === 'account' && <small>Account</small>}<a href={'#/' + p} className={page === p ? 'on' : ''}><Icon n={ic} />{t}</a></span>
           ))}
         </nav>
         <div className="who">
@@ -76,8 +78,15 @@ function App() {
   const route = useRoute();
   const [user, setUser] = useState(undefined);       // undefined = still checking, null = signed out
   useEffect(() => { restore().then(setUser); }, []);
+  const page = route[0] || '';
+  const isDoor = !!cfg.staffPath && page === cfg.staffPath;          // the secret staff address
+  const isStaffPage = !!user && page !== '' && page !== 'search' && !isDoor;
+  useSkin(isStaffPage || isDoor ? 'console' : 'site');
   if (user === undefined) return <div className="login"><div className="card">Loading…</div></div>;
-  if (!user) return route[0] === 'availability' ? <Availability /> : <Login onUser={setUser} />;
+  if (page === 'search') return <SearchPage signedIn={!!user} />;
+  if (isDoor && !user) return <Login onUser={(u) => { setUser(u); location.hash = '#/dashboard'; }} />;
+  if (isDoor && user) { location.hash = '#/dashboard'; return null; }
+  if (!user || page === '') return <Landing signedIn={!!user} />;   // visitors see only the website
   if (Number(user.must_change_password)) return <ChangePassword forced onDone={() => setUser({ ...user, must_change_password: 0 })} />;
   return <Shell user={user} route={route} onOut={async () => { await signOut(); setUser(null); location.hash = '#/'; }} />;
 }

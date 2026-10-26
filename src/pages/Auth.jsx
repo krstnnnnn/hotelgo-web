@@ -30,7 +30,7 @@ export function Login({ onUser }) {
               <button type="button" className="eye" onClick={() => setShow(!show)}>{show ? 'Hide' : 'Show'}</button></div>
           </Field>
           <button className="btn block" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
-          <p style={{ textAlign: 'center', marginBottom: 0 }}><a href="#/availability">Check room availability</a></p>
+          <p style={{ textAlign: 'center', marginBottom: 0 }}><a href="#/">← Back to the website</a></p>
         </form>
       </section>
     </div>
@@ -63,8 +63,8 @@ export function ChangePassword({ forced, onDone }) {
   return forced ? <div className="login">{form}</div> : <><Top title="My account" />{form}</>;
 }
 
-/* Public: anybody can see which room types are free for a time (no sign-in) */
-const SITE = String((window.HOTELGO_CONFIG && window.HOTELGO_CONFIG.apiUrl) || 'http://localhost:8000/api').replace(/\/api\/?$/, '');
+/* Staff: which room types are free for a chosen time */
+
 export function Availability({ signedIn }) {
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   const [q, setQ] = useState({ stay: 'hourly', date: tomorrow, time: '19:00', hours: 3, guests: 2 });
@@ -101,7 +101,7 @@ export function Availability({ signedIn }) {
             <div className="buy">
               <div className="price">{peso(t.price)}</div>
               <div className="muted small">{run.stay === 'overnight' ? 'overnight' : run.hours + ' hrs'}</div>
-              {t.free > 0 ? <a className="btn" href={SITE + '/book?' + new URLSearchParams({ stay: run.stay, date: run.date, time: run.time, hours: run.hours, guests: run.guests, type: t.id })}>Select room</a>
+              {t.free > 0 ? <a className="btn" href={'#/search?' + new URLSearchParams({ stay: run.stay, date: run.date, time: run.time, hours: run.hours, guests: run.guests, type: t.id })}>Select room</a>
                 : <span className="muted small">Try another time</span>}
             </div>
           </div>
@@ -109,17 +109,6 @@ export function Availability({ signedIn }) {
       </div>
     </>
   );
-  if (signedIn) return <><Top title="Availability" sub="What a guest would see for a chosen time." /><div className="card" style={{ marginBottom: 16 }}>{search}</div>{list}</>;
-  return (
-    <div className="pub">
-      <header className="pubhero">
-        <div className="pubnav"><div className="brand"><Logo size={36} /><div>HOTEL<span>GO</span></div></div><a href="#/">Staff sign in</a></div>
-        <h1>Find a room for <em>tonight</em></h1>
-        <p>Pick your time and see what is free right now. Rooms are assigned automatically and sent to you by SMS and email.</p>
-      </header>
-      <main className="pubmain"><div className="card pubcard">{search}</div>{list}</main>
-      <footer className="pubfoot">HOTELGO · Puerto Galera</footer>
-    </div>
-  );
+  return <><Top title="Availability" sub="What a guest would see for a chosen time." /><div className="card" style={{ marginBottom: 16 }}>{search}</div>{list}</>;
 }
 export { label };

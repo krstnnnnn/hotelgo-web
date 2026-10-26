@@ -4,7 +4,7 @@
 // The address of the API comes from the API_URL environment variable (see .env.example),
 // or from public/config.js when API_URL is not set.
 import * as esbuild from 'esbuild';
-import { mkdirSync, writeFileSync, copyFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, copyFileSync, readFileSync, existsSync, cpSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -31,14 +31,23 @@ const css = { entryPoints: [join(here, 'src', 'styles.css')], bundle: true, mini
 
 copyFileSync(join(here, 'public', 'index.html'), join(out, 'index.html'));
 copyFileSync(join(here, 'public', 'favicon.svg'), join(out, 'favicon.svg'));
+cpSync(join(here, 'public', 'assets'), join(out, 'assets'), { recursive: true });   // website stylesheet + pictures
 const apiUrl = (process.env.API_URL || '').trim();
-if (apiUrl) {
-  if (!/^https?:\/\/[^\s"'<>]+$/.test(apiUrl)) { console.error('API_URL must look like https://your-api.onrender.com/api'); process.exit(1); }
-  writeFileSync(join(out, 'config.js'), `window.HOTELGO_CONFIG = { apiUrl: ${JSON.stringify(apiUrl)} };\n`);
-  console.log('API address:', apiUrl);
+const staffPath = (process.env.STAFF_PATH || '').trim().replace(/^[#/]+|\/+$/g, '');
+if (apiUrl && !/^https?:\/\/[^\s"'<>]+$/.test(apiUrl)) { console.error('API_URL must look like https://your-api.onrender.com/api'); process.exit(1); }
+if (staffPath && !/^[A-Za-z0-9][A-Za-z0-9_-]{7,60}$/.test(staffPath)) { console.error('STAFF_PATH must be one secret word of 8-60 letters, numbers, - or _'); process.exit(1); }
+if (apiUrl || staffPath) {
+  // start from public/config.js, then apply the build settings on top
+  const cfg = { apiUrl: 'http://localhost:8000/api', staffPath: '' };
+  const m = readFileSync(join(here, 'public', 'config.js'), 'utf8').match(/HOTELGO_CONFIG\s*=\s*(\{[\s\S]*?\})\s*;/);
+  if (m) { try { Object.assign(cfg, Function('return ' + m[1])()); } catch { /* keep defaults */ } }
+  if (apiUrl) cfg.apiUrl = apiUrl;
+  if (staffPath) cfg.staffPath = staffPath;
+  writeFileSync(join(out, 'config.js'), `window.HOTELGO_CONFIG = ${JSON.stringify(cfg)};\n`);
+  console.log('API address:', cfg.apiUrl, '| staff door:', cfg.staffPath ? '#/' + cfg.staffPath : '(not set)');
 } else {
   copyFileSync(join(here, 'public', 'config.js'), join(out, 'config.js'));
-  console.log('API address: from public/config.js (set API_URL to override)');
+  console.log('Settings: from public/config.js (set API_URL / STAFF_PATH to override)');
 }
 
 if (process.argv.includes('--serve') || process.argv.includes('--watch')) {

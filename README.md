@@ -41,3 +41,15 @@ The API address is in `public/config.js` (`http://localhost:8000/api`), or set `
 | `build.mjs` | Builds `dist/` with esbuild |
 
 Security: nothing secret lives here (everything in a React app is public). The access token is kept in memory and the refresh token in `sessionStorage`. The API checks the role on every request, so hiding a menu item is only for convenience.
+
+
+## The website and the hidden staff sign-in
+
+`#/` is the public website (landing page, rooms, map, gallery, FAQ, contact) in the same design as the PHP site.
+Guests search rooms here (data comes from the API). Sign in, booking and payment continue on the PHP site (the API address without `/api`).
+
+The staff console has **no link anywhere** on the website. Staff open `https://YOUR-SITE.onrender.com/#/<STAFF_PATH>`:
+
+* Local: `public/config.js` -> `staffPath` (default `door-local-7k3m`) -> http://localhost:5173/#/door-local-7k3m
+* Render Static Site: add the environment variable `STAFF_PATH` (one secret word, 8+ letters/numbers) next to `API_URL`, then redeploy.
+* Any other address (`#/admin`, `#/dashboard` ...) just shows the website to people who are not signed in.
