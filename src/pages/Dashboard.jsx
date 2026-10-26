@@ -6,7 +6,7 @@ const clock = (s) => new Date(String(s).replace(' ', 'T')).toLocaleTimeString('e
 
 export default function Dashboard() {
   const d = useLoad(() => api('GET', '/dashboard'));
-  const x = d.data;
+  const x = d.data && { ...d.data, board: d.data.board || [], upcoming: d.data.upcoming || [], notes: d.data.notes || [], count: d.data.count || {} };
   const today = new Date().toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   return (
     <>

@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from 'react';
+import { Component, StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { restore, signOut } from './api';
 import { Toasts } from './ui';
@@ -82,4 +82,20 @@ function App() {
   return <Shell user={user} route={route} onOut={async () => { await signOut(); setUser(null); location.hash = '#/'; }} />;
 }
 
-createRoot(document.getElementById('root')).render(<StrictMode><Toasts><App /></Toasts></StrictMode>);
+/* A page that crashes shows a message instead of a blank screen */
+class Guard extends Component {
+  state = { err: null };
+  static getDerivedStateFromError(err) { return { err }; }
+  render() {
+    if (!this.state.err) return this.props.children;
+    return (
+      <div className="login"><div className="card" style={{ textAlign: 'center' }}>
+        <h2>Something went wrong</h2>
+        <p className="muted">{String(this.state.err.message || this.state.err)}</p>
+        <button className="btn" onClick={() => { location.hash = '#/'; location.reload(); }}>Reload</button>
+      </div></div>
+    );
+  }
+}
+
+createRoot(document.getElementById('root')).render(<StrictMode><Guard><Toasts><App /></Toasts></Guard></StrictMode>);
