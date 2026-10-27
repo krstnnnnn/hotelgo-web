@@ -237,3 +237,5 @@ footer h4{font-family:Sora,'DM Sans',sans-serif;letter-spacing:.02em}
 
 /* React site: in-page jumps stop below the fixed menu */
 section[id]{scroll-margin-top:72px}
+
+.scene.photo:before,.scene.photo:after{display:none}.scene.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}

@@ -55,6 +55,10 @@ The staff console has **no link anywhere** on the website. Staff open `https://Y
 * Any other address (`#/admin`, `#/dashboard` ...) just shows the website to people who are not signed in.
 
 
+## Real photos
+
+Platform admin: *Home photos* in the menu. Hotel owner / platform admin: *Hotels* or *Room types* → Edit → *Upload photo*. The picture is shrunk in the browser and saved in the API database; the public pages show it (and the drawn picture where none was uploaded).
+
 ## Many hotels
 
 The landing page lists every hotel (from `GET /api/hotels`), the map shows all of them, and guests can search by area or hotel.

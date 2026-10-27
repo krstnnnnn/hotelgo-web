@@ -176,3 +176,15 @@ a.li:hover{background:var(--mist)}
 .scene.t2:before{background:var(--ink)}.scene.t3:before{background:var(--reef)}
 .pubfoot{text-align:center;color:var(--mute);padding:10px 0 30px;font-size:13px}
 @media(max-width:760px){.result{grid-template-columns:1fr}.scene{min-height:120px}.result .buy{text-align:left;align-items:flex-start;border-left:0;border-top:1px solid var(--glass)}}
+
+/* photo upload box */
+.photobox{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:6px 0 14px}
+.photobox .pb-img{width:150px;height:100px;border-radius:12px;overflow:hidden;background:var(--glass,#E8F1F4);display:flex;align-items:center;justify-content:center;color:#5B7080;font-size:.8rem;text-align:center;flex:none}
+.photobox.wide .pb-img{width:240px;height:130px}
+.photobox .pb-img img{width:100%;height:100%;object-fit:cover;display:block}
+.photobox .pb-act{display:flex;gap:8px;flex-wrap:wrap}
+.photobox .btn.off{opacity:.6;pointer-events:none}
+.photobox .err{flex-basis:100%}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.photo-grid .card{margin:0}
+.thumb{width:56px;height:38px;border-radius:6px;object-fit:cover;display:block;background:var(--glass,#E8F1F4)}

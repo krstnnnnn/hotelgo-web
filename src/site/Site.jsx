@@ -1,7 +1,7 @@
 /* The public website: landing page + room search. Styled by assets/site.css (same design as the PHP site). */
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import { cfg, SITE } from './config';
+import { cfg, photoUrl, SITE } from './config';
 
 const peso = (n) => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const iso = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 10); };
@@ -93,6 +93,13 @@ const useHotels = () => {
   return h;
 };
 
+/* The real pictures of the home page (slot -> image id). Empty until the admin uploads some; the drawn scenes are the fallback. */
+const usePhotos = () => {
+  const [m, setM] = useState({});
+  useEffect(() => { let live = true; api('GET', '/photos').then((r) => live && setM(r.data || {}), () => {}); return () => { live = false; }; }, []);
+  return m;
+};
+
 /* ---- room search results ---- */
 export function SearchPage({ signedIn }) {
   const raw = new URLSearchParams(location.hash.split('?')[1] || '');
@@ -122,7 +129,7 @@ export function SearchPage({ signedIn }) {
           <div className="flash info">You choose a room <b>type</b>. The exact room is <b>assigned automatically</b> and sent to you by SMS and email.</div>
           <div className="stack" style={{ marginTop: 20 }}>
             {rows.map((t, i) => (
-              <div className={'result' + (t.free < 1 ? ' full' : '')} key={t.id}><div className={'scene t' + ((i % 3) + 1)}><i /></div>
+              <div className={'result' + (t.free < 1 ? ' full' : '')} key={t.id}>{(t.image_id || t.hotel_image_id) ? <div className="scene photo"><img src={photoUrl(t.image_id || t.hotel_image_id)} alt={t.name} loading="lazy" /></div> : <div className={'scene t' + ((i % 3) + 1)}><i /></div>}
                 <div className="body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>{t.hotel_name} · {t.hotel_area}</div><div className="row"><h3 style={{ margin: 0 }}>{t.name}</h3>
                   {t.free < 1 ? <span className="pill gray">Fully booked</span> : t.free <= 2 ? <span className="pill warn">Only {t.free} left</span> : <span className="pill ok">{t.free} rooms free</span>}</div>
                   <p className="mute">{t.description}</p>
@@ -161,6 +168,7 @@ export function Landing({ signedIn }) {
   const c = cfg.site;
   const [types, setTypes] = useState(null);
   const hot = useHotels(); const hotels = hot ? hot.data : null;
+  const ph = usePhotos(); const pic = (slot, fb) => (ph[slot] ? photoUrl(ph[slot]) : img(fb));
   const [place, setPlace] = useState(0);
   const [voice, setVoice] = useState(0);
   const [box, setBox] = useState(-1);
@@ -211,7 +219,7 @@ export function Landing({ signedIn }) {
   return (
     <Layout landing signedIn={signedIn}>
       <section className="lp-hero" id="top">
-        <img className="lp-hero-img" src={img('hero.svg')} alt="" data-parallax />
+        <img className="lp-hero-img" src={pic('hero', 'hero.svg')} alt="" data-parallax />
         <div className="lp-hero-shade" />
         <div className="container lp-hero-in">
           <span className="lp-eyebrow fade-up">Welcome to Puerto Galera</span>
@@ -225,14 +233,14 @@ export function Landing({ signedIn }) {
       <section className="search" id="search"><div className="container"><div className="card reveal"><SearchForm onGo={goSearch} areas={hot ? hot.areas : []} /></div></div></section>
 
       <section className="section lp-about" id="about"><div className="container grid g2 lp-center">
-        <div className="lp-frame reveal"><img src={img('g5.svg')} alt="A Puerto Galera beach" loading="lazy" /><span className="lp-badge"><b>24/7</b><small>online<br />booking</small></span></div>
+        <div className="lp-frame reveal"><img src={pic('about', 'g5.svg')} alt="A Puerto Galera beach" loading="lazy" /><span className="lp-badge"><b>24/7</b><small>online<br />booking</small></span></div>
         <div className="reveal d1"><div className="eyebrow">Our story</div><h2>A calmer way to <em>stay by the sea</em></h2>
           <p className="mute">HOTELGO is built for the beach town: short stays between dives and ferries, quiet nights after the beach, and last-minute plans. See what is free for the exact time you want and book it in a few taps.</p>
           <p className="mute">Every room type shows its real price for your hours, and the motel team sees your booking the moment it is paid.</p>
           <ul className="lp-stats"><li><b>3 · 6 · 12</b><span>Hours or overnight</span></li><li><b>{c.holdMinutes} min</b><span>Room hold</span></li><li><b>QR</b><span>Ticket, no queue</span></li></ul></div>
       </div></section>
 
-      <section className="lp-bandq"><img className="lp-bandq-img" src={img('g1.svg')} alt="" loading="lazy" data-parallax2 /><div className="lp-bandq-shade" />
+      <section className="lp-bandq"><img className="lp-bandq-img" src={pic('quote', 'g1.svg')} alt="" loading="lazy" data-parallax2 /><div className="lp-bandq-shade" />
         <div className="container center reveal"><blockquote>“Your stay, your hours.<br />The sea does the rest.”</blockquote><p>HOTELGO · Puerto Galera</p></div></section>
 
       <section className="section" id="hotels"><div className="container"><div className="center"><div className="eyebrow reveal">One platform, many hotels</div><h2 className="reveal">Hotels across <em>Puerto Galera</em></h2>
@@ -242,7 +250,8 @@ export function Landing({ signedIn }) {
           {hotels && hotels.length === 0 && <div className="card center" style={{ gridColumn: '1/-1' }}>No hotels to show right now.</div>}
           {(hotels || []).map((h, i) => (
             <article className={'card flat lp-room reveal d' + (i % 3)} key={h.id}>
-              <div className="lp-room-body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{h.area}</div><h3>{h.name}</h3><p className="mute small">{h.description}</p>
+              <div className="lp-room-img"><img src={h.image_id ? photoUrl(h.image_id) : img(['g5.svg', 'g1.svg', 'g4.svg', 'g2.svg'][i % 4])} alt={h.name} loading="lazy" /><span className="lp-tag">{h.area}</span></div>
+              <div className="lp-room-body"><h3>{h.name}</h3><p className="mute small">{h.description}</p>
                 <div className="lp-prices"><div><span className="small mute">From</span><b>{peso(h.from_price)} / 3 hrs</b></div><a className="btn btn-sm" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2, hotel: h.id })}>View rooms</a></div></div>
             </article>
           ))}
@@ -255,7 +264,7 @@ export function Landing({ signedIn }) {
           {types && types.length === 0 && <div className="card center" style={{ gridColumn: '1/-1' }}>Rooms could not be loaded right now. Please try again in a moment.</div>}
           {(types || []).slice(0, 6).map((t, i) => (
             <article className={'card flat lp-room reveal d' + (i % 3)} key={t.id}>
-              <div className="lp-room-img"><img src={img(['g3.svg', 'g1.svg', 'g5.svg', 'g4.svg'][i % 4])} alt={t.name} loading="lazy" /><span className="lp-tag">From {peso(t.p3)} / 3 hrs</span></div>
+              <div className="lp-room-img"><img src={t.image_id ? photoUrl(t.image_id) : t.hotel_image_id ? photoUrl(t.hotel_image_id) : img(['g3.svg', 'g1.svg', 'g5.svg', 'g4.svg'][i % 4])} alt={t.name} loading="lazy" /><span className="lp-tag">From {peso(t.p3)} / 3 hrs</span></div>
               <div className="lp-room-body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t.hotel_name} · {t.hotel_area}</div><h3>{t.name}</h3><p className="mute small">{t.description}</p>
                 <ul className="lp-amen">{String(t.amenities || '').split(',').slice(0, 4).map((a) => <li key={a}>{a.trim()}</li>)}<li>Up to {t.max_guests} guests</li></ul>
                 <div className="lp-prices"><div><span className="small mute">Overnight</span><b>{peso(t.pn)}</b></div><a className="btn btn-sm" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2, hotel: t.hotel_id })}>Book now</a></div></div>
@@ -275,7 +284,7 @@ export function Landing({ signedIn }) {
           <li className="reveal d1"><span className="num">2</span><h3>Pay online, securely</h3><p className="mute">Pay with GCash, Maya or card. Your receipt is sent right away.</p></li>
           <li className="reveal d2"><span className="num">3</span><h3>Get your room</h3><p className="mute">A free room is assigned automatically. Show the QR ticket at the desk.</p></li></ol></div></section>
 
-      <section className="lp-cta"><img className="lp-bandq-img" src={img('g6.svg')} alt="" loading="lazy" data-parallax2 /><div className="lp-bandq-shade" />
+      <section className="lp-cta"><img className="lp-bandq-img" src={pic('cta', 'g6.svg')} alt="" loading="lazy" data-parallax2 /><div className="lp-bandq-shade" />
         <div className="container center reveal"><span className="lp-eyebrow">Experience the coast</span><h2>Rest. Recharge. <em>Repeat.</em></h2><Jump className="btn btn-fill btn-lg" id="search">Reserve now</Jump></div></section>
 
       <section className="section lp-mapsec" id="map"><div className="container"><div className="center"><div className="eyebrow reveal">Find us</div><h2 className="reveal">Around <em>Puerto Galera</em></h2>
@@ -292,7 +301,7 @@ export function Landing({ signedIn }) {
 
       <section className="section" id="gallery" style={{ paddingTop: 20 }}><div className="container"><div className="center"><div className="eyebrow reveal">Visual stories</div><h2 className="reveal">Our <em>Gallery</em></h2></div>
         <div className="lp-gallery">{GALLERY.map(([f, alt, cap], i) => (
-          <button type="button" className={'lp-g g' + (i + 1) + ' reveal'} key={f} onClick={() => setBox(i)}><img src={img(f)} alt={alt} loading="lazy" /><span>{cap}</span></button>
+          <button type="button" className={'lp-g g' + (i + 1) + ' reveal'} key={f} onClick={() => setBox(i)}><img src={pic('gallery' + (i + 1), f)} alt={alt} loading="lazy" /><span>{cap}</span></button>
         ))}</div></div></section>
 
       <section className="section lp-voices" id="voices"><div className="container"><div className="center"><div className="eyebrow reveal">Guest voices</div><h2 className="reveal">Memories that <em>last</em></h2></div>
@@ -330,7 +339,7 @@ export function Landing({ signedIn }) {
         <div className="lp-lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={(e) => { if (e.target === e.currentTarget) setBox(-1); }}>
           <button type="button" className="lb-x" aria-label="Close" onClick={() => setBox(-1)}>×</button>
           <button type="button" className="lb-n lb-prev" aria-label="Previous" onClick={() => setBox((box + GALLERY.length - 1) % GALLERY.length)}>‹</button>
-          <img src={img(GALLERY[box][0])} alt={GALLERY[box][1]} />
+          <img src={pic('gallery' + (box + 1), GALLERY[box][0])} alt={GALLERY[box][1]} />
           <button type="button" className="lb-n lb-next" aria-label="Next" onClick={() => setBox((box + 1) % GALLERY.length)}>›</button>
           <p>{GALLERY[box][1]}</p>
         </div>

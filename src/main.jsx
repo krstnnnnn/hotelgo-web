@@ -11,6 +11,7 @@ import Bookings from './pages/Bookings';
 import Guests from './pages/Guests';
 import { RoomTypes, Rooms } from './pages/Catalog';
 import { Hotels } from './pages/Hotels';
+import { Photos } from './pages/Photos';
 import { Audit, Notifications, Payments, Reports, Settings, Staff } from './pages/Owner';
 
 /* tiny hash router: #/bookings/HG-ABC123 -> ['bookings', 'HG-ABC123'] */
@@ -24,7 +25,7 @@ function useRoute() {
 const NAV = [
   ['dashboard', 'Dashboard', 'staff', 'dashboard'], ['bookings', 'Reservations', 'staff', 'bookings'], ['guests', 'Guests', 'staff', 'guests'], ['availability', 'Availability', 'staff', 'availability'],
   ['types', 'Room types', 'staff', 'types'], ['rooms', 'Rooms', 'staff', 'rooms'],
-  ['hotels', 'Hotels', 'admin', 'hotel'], ['payments', 'Payments', 'admin', 'payments'], ['notifications', 'Notifications', 'admin', 'notifications'], ['reports', 'Reports', 'admin', 'reports'], ['staff', 'Staff', 'admin', 'staff'], ['settings', 'Settings', 'platform', 'settings'], ['audit', 'Audit log', 'admin', 'audit'],
+  ['hotels', 'Hotels', 'admin', 'hotel'], ['payments', 'Payments', 'admin', 'payments'], ['notifications', 'Notifications', 'admin', 'notifications'], ['reports', 'Reports', 'admin', 'reports'], ['staff', 'Staff', 'admin', 'staff'], ['photos', 'Home photos', 'platform', 'photo'], ['settings', 'Settings', 'platform', 'settings'], ['audit', 'Audit log', 'admin', 'audit'],
   ['account', 'My account', 'staff', 'account'],
 ];
 const initials = (n) => String(n || '?').split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
@@ -47,6 +48,7 @@ function Shell({ user, route, onOut }) {
       case 'notifications': return admin ? <Notifications /> : <NoAccess />;
       case 'reports': return admin ? <Reports user={user} /> : <NoAccess />;
       case 'staff': return admin ? <Staff user={user} /> : <NoAccess />;
+      case 'photos': return platform ? <Photos /> : <NoAccess />;
       case 'settings': return platform ? <Settings /> : <NoAccess />;
       case 'audit': return admin ? <Audit /> : <NoAccess />;
       default: return <div className="card empty">Page not found.</div>;

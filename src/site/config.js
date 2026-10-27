@@ -14,3 +14,5 @@ export const cfg = {
 };
 /* Address of the PHP website (the API server), used for sign-in, booking and the legal pages */
 export const SITE = cfg.apiUrl.replace(/\/api$/, '');
+/* Address of an uploaded picture (served by the API server, see PhotoController) */
+export const photoUrl = (id) => (Number(id) > 0 ? SITE + '/photo/' + Number(id) : '');

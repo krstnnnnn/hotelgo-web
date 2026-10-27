@@ -1,3 +1,4 @@
+import { api } from './api';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 export const peso = (n) => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -118,4 +119,50 @@ const React_isEmpty = (rows) => Array.isArray(rows) && rows.length === 0;
 
 export function Top({ title, sub, children }) {
   return <div className="top"><div><h1>{title}</h1>{sub && <p>{sub}</p>}</div><div className="row">{children}</div></div>;
+}
+
+/* Shrinks a chosen picture in the browser (max 1600 px, JPEG) so the upload stays small, then returns a data: URL */
+export function shrink(file, max = 1600) {
+  return new Promise((resolve, reject) => {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { reject(new Error('Choose a JPG, PNG or WebP picture.')); return; }
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      let q = 0.85, out = c.toDataURL('image/jpeg', q);
+      while (out.length * 0.75 > 700000 && q > 0.4) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+      if (c.width < 200 || c.height < 150) reject(new Error('The picture is too small (at least 200 x 150 pixels).'));
+      else if (out.length * 0.75 > 700000) reject(new Error('The picture is still too large. Choose a smaller one.'));
+      else resolve(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file could not be read as a picture.')); };
+    img.src = url;
+  });
+}
+
+/* Shows the current picture and lets the owner replace or remove it. Saves straight away (POST /manage/photos). */
+export function PhotoBox({ kind, id, slot, current, src, wide, onChange }) {
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  const send = async (data) => {
+    setBusy(true); setErr('');
+    try { const r = await api('POST', '/manage/photos', { kind, id, slot, data }); onChange && onChange(r.image_id); }
+    catch (x) { setErr(x.message); } finally { setBusy(false); }
+  };
+  const pick = async (e) => {
+    const f = e.target.files && e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { await send(await shrink(f)); } catch (x) { setErr(x.message); }
+  };
+  return (
+    <div className={'photobox' + (wide ? ' wide' : '')}>
+      <div className="pb-img">{current ? <img src={src} alt="" /> : <span>No photo yet</span>}</div>
+      <div className="pb-act">
+        <label className={'btn small' + (busy ? ' off' : '')}>{busy ? 'Working…' : current ? 'Replace photo' : 'Upload photo'}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={pick} disabled={busy} hidden /></label>
+        {current ? <button type="button" className="btn small danger" disabled={busy} onClick={() => send(null)}>Remove</button> : null}
+      </div>
+      {err && <div className="err" role="alert">{err}</div>}
+    </div>
+  );
 }
