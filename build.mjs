@@ -54,7 +54,7 @@ if (process.argv.includes('--serve') || process.argv.includes('--watch')) {
   const a = await esbuild.context(js); const b = await esbuild.context(css);
   await a.watch(); await b.watch();
   if (process.argv.includes('--serve')) {
-    const { port } = await a.serve({ servedir: out, port: 5173, host: '127.0.0.1' });
+    const { port } = await a.serve({ servedir: out, port: 5173, host: '127.0.0.1', fallback: join(out, 'index.html') });
     console.log(`Open http://localhost:${port}`);
   }
 } else {

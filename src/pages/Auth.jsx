@@ -1,7 +1,41 @@
 import { Logo } from '../icons';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { photoUrl } from '../site/config';
 import { api, signIn } from '../api';
 import { Err, Field, FormModal, Loading, Top, label, peso, useLoad, useToast } from '../ui';
+
+/* Sliding hotel pictures on the left of the sign-in page (the hotels and photos of this platform; a colour scene when a hotel has no photo yet) */
+const TONES = ['sunset', 'ocean', 'lagoon', 'dusk'];
+function HotelCarousel() {
+  const [hotels, setHotels] = useState([]); const [i, setI] = useState(0); const [paused, setPaused] = useState(false); const x0 = useRef(null);
+  useEffect(() => { api('GET', '/hotels').then((r) => setHotels((r.data || []).slice(0, 10)), () => {}); }, []);
+  const n = hotels.length;
+  useEffect(() => {
+    if (paused || n < 2 || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return undefined;
+    const t = setInterval(() => setI((v) => (v + 1) % n), 3500);
+    return () => clearInterval(t);
+  }, [paused, n]);
+  if (!n) return null;
+  const go = (k) => setI(((k % n) + n) % n);
+  return (
+    <div className="hc" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} aria-roledescription="carousel" aria-label="Places to stay in Puerto Galera">
+      <p className="hc-eyebrow">Puerto Galera, Oriental Mindoro</p>
+      <div className="hc-view" onPointerDown={(e) => { x0.current = e.clientX; }} onPointerUp={(e) => { if (x0.current != null && Math.abs(e.clientX - x0.current) > 40) go(i + (e.clientX < x0.current ? 1 : -1)); x0.current = null; }}>
+        <div className="hc-track" style={{ transform: 'translateX(-' + i * 100 + '%)' }}>
+          {hotels.map((h, k) => (
+            <article key={h.id} className={'hc-slide tone-' + TONES[k % 4]} aria-hidden={k !== i} style={h.image_id ? { backgroundImage: 'linear-gradient(180deg,rgba(8,28,48,.05) 30%,rgba(8,28,48,.82)),url(' + photoUrl(h.image_id) + ')' } : undefined}>
+              <div className="hc-info"><span className="hc-area">📍 {h.area}</span><h3>{h.name}</h3></div>
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="hc-ctrl">
+        <div className="hc-dots">{hotels.map((h, k) => <button key={h.id} type="button" aria-label={h.name} className={k === i ? 'on' : ''} onClick={() => go(k)} />)}</div>
+        <div className="hc-arrows"><button type="button" aria-label="Previous" onClick={() => go(i - 1)}>‹</button><button type="button" aria-label="Next" onClick={() => go(i + 1)}>›</button></div>
+      </div>
+    </div>
+  );
+}
 
 export function Login({ onUser }) {
   const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const [show, setShow] = useState(false);
@@ -13,6 +47,7 @@ export function Login({ onUser }) {
     <div className="auth2">
       <section className="art2">
         <div className="brand light"><Logo size={42} /><div>HOTEL<span>GO</span><small>Staff console</small></div></div>
+        <HotelCarousel />
         <span className="chip">STAFF PORTAL · PUERTO GALERA</span>
         <h1>Run the front desk from one screen.</h1>
         <ul><li>Live room availability and instant room assignment</li><li>Check guests in and out in two clicks</li><li>Every sign-in is recorded in the audit log</li></ul>
