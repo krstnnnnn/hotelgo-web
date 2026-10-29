@@ -133,7 +133,7 @@ function Detail({ bookingRef, user, onChange }) {
       <div className="panel-head"><h2>Booking {bookingRef}</h2><Chip s={b.status} /></div>
       <dl className="kv">
         <dt>Guest</dt><dd>{b.guest_name}</dd><dt>Mobile</dt><dd>{b.guest_mobile}</dd><dt>Hotel</dt><dd>{b.hotel_name || '—'} · Room {b.room_no || '—'}</dd>
-        <dt>Requested</dt><dd>{b.type_name} · {stay(b)}</dd><dt>Window</dt><dd>{when(b.start_at)} – {when(b.end_at)}</dd><dt>Amount</dt><dd>{peso(b.total)}</dd><dt>Booked</dt><dd>{b.source === 'walkin' ? 'Walk-in' : 'Online'}</dd>
+        <dt>Requested</dt><dd>{b.type_name} · {stay(b)}</dd><dt>Window</dt><dd>{when(b.start_at)} – {when(b.end_at)}</dd><dt>Amount</dt><dd>{peso(b.total)}</dd><dt>Booked</dt><dd>{b.source === 'walkin' ? 'Walk-in' : 'Online'}</dd>{b.gcal_event_id ? <><dt>Calendar</dt><dd>In Google Calendar</dd></> : null}
       </dl>
       <span className="eyebrow">AUTOMATED ROOM ASSIGNMENT</span>
       <div className="assign"><span>Room {b.room_no || '—'} · free for the full window</span><em>ASSIGNED</em></div>

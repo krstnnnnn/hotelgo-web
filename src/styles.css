@@ -313,3 +313,10 @@ a.li:hover{background:var(--mist)}
 .v2 .form label.btn{color:#fff;text-transform:none;letter-spacing:0;font-size:13px;font-weight:700;margin:0;display:inline-block}
 .v2 .form .photobox label.btn{padding:5px 10px}
 @media(max-width:1180px){.v2 .split>aside{position:static}}
+
+/* Google Calendar box in the hotel form */
+.calbox{border:1px solid var(--glass);border-radius:var(--r);padding:12px 14px 10px;margin:14px 0 12px}
+.calbox legend{font-weight:700;padding:0 6px;font-size:14px}
+.calbox p{margin:0 0 10px}
+.calbox .row{margin:4px 0 8px}
+.ok-note{background:#e3f4ea;color:var(--ok);padding:10px 12px;border-radius:10px;margin-bottom:12px;font-weight:500}

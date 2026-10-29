@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { api } from '../api';
-import { Confirm, Field, FormModal, Loading, PhotoBox, Pill, Table, Top, useLoad, useToast } from '../ui';
+import { Confirm, Err, Field, FormModal, Loading, PhotoBox, Pill, Table, Top, useLoad, useToast } from '../ui';
 import { photoUrl } from '../site/config';
 
 const AREAS = ['Poblacion', 'Sabang', 'White Beach', 'Talipanan', 'Aninuan', 'Balatero', 'Big La Laguna', 'Small La Laguna', 'Muelle'];
-const blank = { name: '', area: 'Sabang', address: '', description: '', lat: 13.5188, lng: 120.9647, phone: '', email: '', is_active: 1 };
+const blank = { name: '', area: 'Sabang', address: '', description: '', lat: 13.5188, lng: 120.9647, phone: '', email: '', is_active: 1, calendar_id: '' };
 
 /* Platform admin: every hotel on HOTELGO. Hotel owner: only their own hotel profile. */
 export function Hotels({ user }) {
@@ -18,9 +18,9 @@ export function Hotels({ user }) {
       </Top>
       <div className="card">
         <Loading state={list} />
-        {list.data && <Table head={['', 'Hotel', 'Area', 'Rooms', 'Contact', 'Visible', '']} empty="No hotels yet."
+        {list.data && <Table head={['', 'Hotel', 'Area', 'Rooms', 'Contact', 'Calendar', 'Visible', '']} empty="No hotels yet."
           rows={list.data.data.map((h) => (
-            <tr key={h.id}><td>{h.image_id ? <img className="thumb" src={photoUrl(h.image_id)} alt="" /> : null}</td><td><b>{h.name}</b><div className="muted small">{h.address}</div></td><td>{h.area}</td><td>{h.rooms}</td><td>{h.phone}<div className="muted small">{h.email}</div></td>
+            <tr key={h.id}><td>{h.image_id ? <img className="thumb" src={photoUrl(h.image_id)} alt="" /> : null}</td><td><b>{h.name}</b><div className="muted small">{h.address}</div></td><td>{h.area}</td><td>{h.rooms}</td><td>{h.phone}<div className="muted small">{h.email}</div></td><td>{h.calendar_id ? <Pill v="active" text="Own calendar" /> : <span className="muted small">Default</span>}</td>
               <td><Pill v={Number(h.is_active) ? 'active' : 'off'} text={Number(h.is_active) ? 'Yes' : 'Hidden'} /></td>
               <td><div className="row"><button className="btn small" onClick={() => setEdit(h)}>Edit</button>{platform && <button className="btn small danger" onClick={() => setDel(h)}>Delete</button>}</div></td></tr>
           ))} />}
@@ -57,6 +57,32 @@ function HotelForm({ h, onClose, onSaved, onPhoto }) {
       <Field label="Email"><input type="email" value={f.email || ''} onChange={set('email')} maxLength={150} /></Field>
       <p className="muted small" style={{ marginTop: 0 }}>Tip: open the place on OpenStreetMap or Google Maps, right-click it and copy the latitude and longitude.</p>
       <label className="chk"><input type="checkbox" checked={!!Number(f.is_active)} onChange={(e) => setF({ ...f, is_active: e.target.checked ? 1 : 0 })} /> Visible to guests</label>
+      {h.id && <CalendarBox hotel={h} value={f.calendar_id || ''} onChange={(v) => setF({ ...f, calendar_id: v })} />}
     </FormModal>
+  );
+}
+
+/* Google Calendar of one hotel: every paid booking is added to it by itself (service account, Calendar API). These buttons check and repair it. */
+function CalendarBox({ hotel, value, onChange }) {
+  const info = useLoad(() => api('GET', '/calendar')); const [msg, setMsg] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState('');
+  const c = info.data;
+  const run = (what, path, body) => async () => {
+    setBusy(what); setMsg(''); setErr('');
+    try { const r = await api('POST', path, { hotel_id: hotel.id, ...body }); setMsg(r.message); } catch (x) { setErr(x.message); }
+    setBusy('');
+  };
+  return (
+    <fieldset className="calbox">
+      <legend>Google Calendar</legend>
+      {c && !c.connected && <p className="muted small">Not connected on the server yet. Set <b>GOOGLE_SERVICE_ACCOUNT_JSON</b> in Render → Environment (the service account key file). Guests still get the built-in calendar file.</p>}
+      {c && c.connected && <p className="muted small">Share your Google Calendar with <b className="mono">{c.service_account}</b> and give it the permission <b>Make changes to events</b>. Then paste the calendar's ID below: Google Calendar → Settings → your calendar → Integrate calendar → Calendar ID.{c.has_default ? ' Leave it empty to use the platform calendar.' : ''}</p>}
+      <Field label="Calendar ID"><input value={value} onChange={(e) => onChange(e.target.value)} maxLength={190} placeholder="abc123@group.calendar.google.com" /></Field>
+      <Err text={err} />{msg && <div className="ok-note" role="status">{msg}</div>}
+      <div className="row">
+        <button type="button" className="btn small ghost" disabled={!!busy || !c || !c.connected} onClick={run('test', '/calendar/test', { calendar_id: value })}>{busy === 'test' ? 'Testing…' : 'Test connection'}</button>
+        <button type="button" className="btn small ghost" disabled={!!busy || !c || !c.connected} onClick={run('sync', '/calendar/sync', {})}>{busy === 'sync' ? 'Sending…' : 'Send upcoming bookings'}</button>
+      </div>
+      <p className="muted small">Save the hotel first if you changed the ID, then press “Send upcoming bookings”.</p>
+    </fieldset>
   );
 }

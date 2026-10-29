@@ -312,14 +312,14 @@ const SERVICES = [
   ['SMS notification service', 'Booking confirmations and OTP codes. Optional and paid.', 'SMS_PROVIDER, SMS_API_KEY'],
   ['Google Maps', 'Maps, hotel pins and directions (a free map is used without a key).', 'GOOGLE_MAPS_KEY'],
   ['Email notification service', 'Receipts, confirmations and sign-up codes.', 'EMAIL_PROVIDER, APPS_SCRIPT_URL'],
-  ['Calendar (.ics file)', 'Guests download a calendar file from their confirmation and email.', 'Built in'],
+  ['Google Calendar', 'Every paid booking is added to the hotel\u2019s Google Calendar, updated when it changes and removed when it is cancelled. Guests also download a calendar file.', 'GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_CALENDAR_ID'],
 ];
 const RULE_FIELDS = [['booking_fee', 'Booking fee (₱)'], ['hold_minutes', 'Room hold (minutes)'], ['cancel_hours', 'Free cancellation until (hours before)'], ['overnight_start', 'Overnight starts (HH:MM)'], ['overnight_end', 'Overnight ends (HH:MM)']];
 export function Settings() {
   const [tab, setTab] = useState('Integrations'); const d = useLoad(() => api('GET', '/settings')); const toast = useToast();
   const [f, setF] = useState(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const v = f || (d.data && d.data.data);
   const save = async (e) => { e.preventDefault(); setBusy(true); setErr(''); try { const r = await api('PUT', '/settings', v); setF(r.data); toast('Settings saved.'); } catch (x) { setErr(x.message); } setBusy(false); };
-  const ints = d.data ? d.data.integrations : [];
+  const ints = d.data ? d.data.integrations.map(([name, connected, note]) => ({ name, connected, note })) : [];     // the API sends [name, connected, note]
   return (
     <div className="v2">
       <Head title="Settings" sub="Platform-wide rules and connections" />
