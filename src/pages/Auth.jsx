@@ -2,7 +2,7 @@ import { Logo } from '../icons';
 import { useEffect, useRef, useState } from 'react';
 import { photoUrl } from '../site/config';
 import { api, signIn } from '../api';
-import { Err, Field, FormModal, Loading, Top, label, peso, useLoad, useToast } from '../ui';
+import { Err, Field, FormModal, Included, Loading, Top, VipBadge, label, peso, useLoad, useToast } from '../ui';
 
 /* Sliding hotel pictures on the left of the sign-in page (the hotels and photos of this platform; a colour scene when a hotel has no photo yet) */
 const TONES = ['sunset', 'ocean', 'lagoon', 'dusk'];
@@ -127,9 +127,9 @@ export function Availability({ signedIn }) {
           <div className={'result' + (t.free < 1 ? ' full' : '')} key={t.id}>
             <div className={'scene t' + ((i % 3) + 1)}><i /></div>
             <div className="rbody">
-              <div className="rtop"><h3>{t.name}</h3>
+              <div className="rtop"><h3>{t.name}</h3><VipBadge t={t} />
                 {t.free < 1 ? <span className="pill gray">Fully booked</span> : t.free <= 2 ? <span className="pill warn">Only {t.free} left</span> : <span className="pill ok">{t.free} rooms free</span>}</div>
-              <p className="muted">{t.description}</p>
+              <p className="muted">{t.description}</p><Included t={t} />
               <div className="chips">{String(t.amenities || '').split(',').map((a) => a.trim()).filter(Boolean).map((a) => <span className="chip" key={a}>{a}</span>)}
                 <span className="chip">Up to {t.max_guests} guests</span></div>
             </div>

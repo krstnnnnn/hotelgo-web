@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { cfg, photoUrl, SITE } from './config';
+import { Included, VipBadge } from '../ui';
 
 const peso = (n) => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const iso = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 10); };
@@ -130,9 +131,9 @@ export function SearchPage({ signedIn }) {
           <div className="stack" style={{ marginTop: 20 }}>
             {rows.map((t, i) => (
               <div className={'result' + (t.free < 1 ? ' full' : '')} key={t.id}>{(t.image_id || t.hotel_image_id) ? <div className="scene photo"><img src={photoUrl(t.image_id || t.hotel_image_id)} alt={t.name} loading="lazy" /></div> : <div className={'scene t' + ((i % 3) + 1)}><i /></div>}
-                <div className="body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>{t.hotel_name} · {t.hotel_area}</div><div className="row"><h3 style={{ margin: 0 }}>{t.name}</h3>
+                <div className="body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>{t.hotel_name} · {t.hotel_area}</div><div className="row"><h3 style={{ margin: 0 }}>{t.name}</h3><VipBadge t={t} />
                   {t.free < 1 ? <span className="pill gray">Fully booked</span> : t.free <= 2 ? <span className="pill warn">Only {t.free} left</span> : <span className="pill ok">{t.free} rooms free</span>}</div>
-                  <p className="mute">{t.description}</p>
+                  <p className="mute">{t.description}</p><Included t={t} />
                   <div className="chips">{String(t.amenities || '').split(',').map((a) => a.trim()).filter(Boolean).map((a) => <span className="chip" key={a}>{a}</span>)}<span className="chip">Up to {t.max_guests} guests</span></div>
                   <p className="small mute" style={{ margin: '10px 0 0' }}>Free cancellation until {cfg.site.cancelHours} hours before check-in</p></div>
                 <div className="buy"><div className="price">{peso(t.price)}</div><div className="small mute">{p.stay === 'overnight' ? 'overnight' : st.w.hours + ' hrs'} · fee added at checkout</div>
@@ -265,7 +266,7 @@ export function Landing({ signedIn }) {
           {(types || []).slice(0, 6).map((t, i) => (
             <article className={'card flat lp-room reveal d' + (i % 3)} key={t.id}>
               <div className="lp-room-img"><img src={t.image_id ? photoUrl(t.image_id) : t.hotel_image_id ? photoUrl(t.hotel_image_id) : img(['g3.svg', 'g1.svg', 'g5.svg', 'g4.svg'][i % 4])} alt={t.name} loading="lazy" /><span className="lp-tag">From {peso(t.p3)} / 3 hrs</span></div>
-              <div className="lp-room-body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t.hotel_name} · {t.hotel_area}</div><h3>{t.name}</h3><p className="mute small">{t.description}</p>
+              <div className="lp-room-body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t.hotel_name} · {t.hotel_area}</div><h3>{t.name} <VipBadge t={t} /></h3><p className="mute small">{t.description}</p><Included t={t} />
                 <ul className="lp-amen">{String(t.amenities || '').split(',').slice(0, 4).map((a) => <li key={a}>{a.trim()}</li>)}<li>Up to {t.max_guests} guests</li></ul>
                 <div className="lp-prices"><div><span className="small mute">Overnight</span><b>{peso(t.pn)}</b></div><a className="btn btn-sm" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2, hotel: t.hotel_id })}>Book now</a></div></div>
             </article>

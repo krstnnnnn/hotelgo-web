@@ -73,7 +73,7 @@ function EditGuest({ g, onClose, onSaved }) {
 }
 
 /* ===================================================== Rooms & rates ===================================================== */
-const blankType = { hotel_id: '', name: '', description: '', amenities: '', max_guests: 2, price_3h: '', price_6h: '', price_12h: '', price_overnight: '', cleaning_buffer_min: 15, is_active: 1 };
+const blankType = { hotel_id: '', name: '', description: '', amenities: '', max_guests: 2, price_3h: '', price_6h: '', price_12h: '', price_overnight: '', cleaning_buffer_min: 15, is_active: 1, is_vip: 0, included_services: '' };
 export function RoomsRates({ user, tab: first }) {
   const [tab, setTab] = useState(first || 'rooms'); const [typeId, setTypeId] = useState(null); const [addRoom, setAddRoom] = useState(false); const [newType, setNewType] = useState(false); const [delRoom, setDelRoom] = useState(null);
   const rooms = useLoad(() => api('GET', '/rooms')); const types = useLoad(() => api('GET', '/types'));
@@ -100,7 +100,7 @@ export function RoomsRates({ user, tab: first }) {
               <td><span className={'chip chip-' + (r.status === 'active' ? 'teal' : 'warn')}>{r.status === 'active' ? 'Active' : 'Under maintenance'}</span></td>
               <td onClick={(e) => e.stopPropagation()}>{admin ? <button className={'toggle' + (r.status === 'active' ? ' on' : '')} role="switch" aria-checked={r.status === 'active'} aria-label={'Room ' + r.room_no + ' bookable'} onClick={() => toggle(r)}><i /></button> : '—'}</td>{admin && <td onClick={(e) => e.stopPropagation()}><div className="row"><button className="btn small ghost" onClick={() => setAddRoom(r)}>Edit</button><button className="btn small danger" onClick={() => setDelRoom(r)}>Delete</button></div></td>}</tr>)}</tbody></table>}
           {tab === 'types' && <table className="tbl"><thead><tr><th></th>{user.platform && <th>HOTEL</th>}<th>TYPE</th><th>MAX GUESTS</th><th>BUFFER</th><th>ROOMS</th><th>VISIBLE</th></tr></thead><tbody>
-            {T.map((t) => <tr key={t.id} className={'row-click' + (type && t.id === type.id ? ' on' : '')} onClick={() => setTypeId(t.id)}><td>{t.image_id ? <img className="thumb" src={photoUrl(t.image_id)} alt="" /> : null}</td>{user.platform && <td>{t.hotel_name}</td>}<td><b>{t.name}</b></td><td>{t.max_guests}</td><td>{t.cleaning_buffer_min} min</td><td>{count(t.id)}</td><td><span className={'chip chip-' + (Number(t.is_active) ? 'teal' : 'grey')}>{Number(t.is_active) ? 'Yes' : 'Hidden'}</span></td></tr>)}</tbody></table>}
+            {T.map((t) => <tr key={t.id} className={'row-click' + (type && t.id === type.id ? ' on' : '')} onClick={() => setTypeId(t.id)}><td>{t.image_id ? <img className="thumb" src={photoUrl(t.image_id)} alt="" /> : null}</td>{user.platform && <td>{t.hotel_name}</td>}<td><b>{t.name}</b>{!!Number(t.is_vip) && <span className="chip chip-warn" style={{ marginLeft: 6 }}>VIP</span>}</td><td>{t.max_guests}</td><td>{t.cleaning_buffer_min} min</td><td>{count(t.id)}</td><td><span className={'chip chip-' + (Number(t.is_active) ? 'teal' : 'grey')}>{Number(t.is_active) ? 'Yes' : 'Hidden'}</span></td></tr>)}</tbody></table>}
           {tab === 'rates' && <table className="tbl"><thead><tr><th>TYPE</th><th>3 HRS</th><th>6 HRS</th><th>12 HRS</th><th>OVERNIGHT</th></tr></thead><tbody>
             {T.map((t) => <tr key={t.id} className={'row-click' + (type && t.id === type.id ? ' on' : '')} onClick={() => setTypeId(t.id)}><td><b>{t.name}</b>{user.platform && <small className="muted"> {t.hotel_name}</small>}</td><td>{peso(t.price_3h)}</td><td>{peso(t.price_6h)}</td><td>{peso(t.price_12h)}</td><td>{peso(t.price_overnight)}</td></tr>)}</tbody></table>}
         </section>
@@ -126,6 +126,8 @@ function TypePanel({ t, admin, onSaved, onDeleted }) {
       <div className="two"><label>MAX GUESTS<input type="number" min="1" max="20" value={f.max_guests} onChange={set('max_guests')} disabled={!admin} /></label><label>CLEANING BUFFER (MIN)<input type="number" min="0" max="180" value={f.cleaning_buffer_min} onChange={set('cleaning_buffer_min')} disabled={!admin} /></label></div>
       <div className="two"><label>3 HOURS (₱)<input type="number" min="0" step="0.01" value={f.price_3h} onChange={set('price_3h')} disabled={!admin} /></label><label>6 HOURS (₱)<input type="number" min="0" step="0.01" value={f.price_6h} onChange={set('price_6h')} disabled={!admin} /></label>
         <label>12 HOURS (₱)<input type="number" min="0" step="0.01" value={f.price_12h} onChange={set('price_12h')} disabled={!admin} /></label><label>OVERNIGHT (₱)<input type="number" min="0" step="0.01" value={f.price_overnight} onChange={set('price_overnight')} disabled={!admin} /></label></div>
+      <label className="chk" style={{ textTransform: 'none', letterSpacing: 0 }}><input type="checkbox" checked={!!Number(f.is_vip)} onChange={(e) => setF({ ...f, is_vip: e.target.checked ? 1 : 0 })} disabled={!admin} /> VIP / luxury room (guests can send requests)</label>
+      {!!Number(f.is_vip) && <label>INCLUDED SERVICES (ONE PER LINE, “TITLE: DETAILS”)<textarea rows="4" maxLength={1000} placeholder={'Welcome drinks: 2 cocktails\nBreakfast in bed: for 2'} value={f.included_services || ''} onChange={set('included_services')} disabled={!admin} /></label>}
       <label className="chk" style={{ textTransform: 'none', letterSpacing: 0 }}><input type="checkbox" checked={!!Number(f.is_active)} onChange={(e) => setF({ ...f, is_active: e.target.checked ? 1 : 0 })} disabled={!admin} /> Visible to guests</label>
       <span className="eyebrow">PHOTO</span>
       {admin ? <PhotoBox kind="room_type" id={t.id} current={img} src={photoUrl(img)} onChange={(v) => { setImg(v); onSaved(); }} /> : <p className="hint">Only the owner can change the photo.</p>}
@@ -144,6 +146,8 @@ function NewType({ hotels, onClose, onSaved }) {
       <div className="grid2"><Field label="Max guests"><input type="number" min="1" max="20" value={f.max_guests} onChange={set('max_guests')} required /></Field><Field label="Cleaning buffer (min)"><input type="number" min="0" max="180" value={f.cleaning_buffer_min} onChange={set('cleaning_buffer_min')} required /></Field>
         <Field label="3 hours (₱)"><input type="number" min="0" step="0.01" value={f.price_3h} onChange={set('price_3h')} required /></Field><Field label="6 hours (₱)"><input type="number" min="0" step="0.01" value={f.price_6h} onChange={set('price_6h')} required /></Field>
         <Field label="12 hours (₱)"><input type="number" min="0" step="0.01" value={f.price_12h} onChange={set('price_12h')} required /></Field><Field label="Overnight (₱)"><input type="number" min="0" step="0.01" value={f.price_overnight} onChange={set('price_overnight')} required /></Field></div>
+      <label className="chk"><input type="checkbox" checked={!!Number(f.is_vip)} onChange={(e) => setF({ ...f, is_vip: e.target.checked ? 1 : 0 })} /> VIP / luxury room</label>
+      {!!Number(f.is_vip) && <Field label="Included services (one per line, “Title: details”)"><textarea rows="4" maxLength={1000} value={f.included_services} onChange={set('included_services')} /></Field>}
     </FormModal>
   );
 }

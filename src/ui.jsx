@@ -166,3 +166,11 @@ export function PhotoBox({ kind, id, slot, current, src, wide, onChange }) {
     </div>
   );
 }
+
+/* VIP room: a badge and the list of included services ("Title: details" per line) */
+export const VipBadge = ({ t }) => (Number(t.is_vip) ? <span className="pill vip">★ VIP</span> : null);
+export function Included({ t }) {
+  if (!Number(t.is_vip)) return null;
+  const rows = String(t.included_services || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  return rows.length ? <ul className="vipinc">{rows.map((l) => { const [a, ...b] = l.split(':'); return <li key={l}><b>{a.trim()}</b>{b.length ? ' · ' + b.join(':').trim() : ''}</li>; })}</ul> : null;
+}

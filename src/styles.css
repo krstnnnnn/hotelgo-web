@@ -320,3 +320,6 @@ a.li:hover{background:var(--mist)}
 .calbox p{margin:0 0 10px}
 .calbox .row{margin:4px 0 8px}
 .ok-note{background:#e3f4ea;color:var(--ok);padding:10px 12px;border-radius:10px;margin-bottom:12px;font-weight:500}
+
+.pill.vip{background:#FFF1D6;color:#7A4B00;border:1px solid #E8C26A}.vipinc{margin:8px 0 0;padding:0;list-style:none;font-size:.85rem}.vipinc li:before{content:'✓ ';color:#0E7C86}
+.req-line{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid #E3ECEF}

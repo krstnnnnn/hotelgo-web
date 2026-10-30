@@ -13,6 +13,7 @@ import { Hotels } from './pages/Hotels';
 import { Photos } from './pages/Photos';
 import { Audit, Staff } from './pages/Owner';
 import { Bell } from './v2';
+import Requests from './pages/Requests';
 
 /* tiny hash router: #/bookings/HG-ABC123 -> ['bookings', 'HG-ABC123'] */
 function useRoute() {
@@ -23,7 +24,7 @@ function useRoute() {
 }
 
 const NAV = [
-  ['dashboard', 'Dashboard', 'staff', 'dashboard'], ['bookings', 'Reservations', 'staff', 'bookings'], ['guests', 'Guests', 'staff', 'guests'], ['availability', 'Availability', 'staff', 'availability'],
+  ['dashboard', 'Dashboard', 'staff', 'dashboard'], ['bookings', 'Reservations', 'staff', 'bookings'], ['requests', 'Requests', 'staff', 'bell'], ['guests', 'Guests', 'staff', 'guests'], ['availability', 'Availability', 'staff', 'availability'],
   ['types', 'Room types', 'staff', 'types'], ['rooms', 'Rooms', 'staff', 'rooms'],
   ['hotels', 'Hotels', 'admin', 'hotel'], ['payments', 'Payments', 'admin', 'payments'], ['notifications', 'Notifications', 'admin', 'notifications'], ['reports', 'Reports', 'admin', 'reports'], ['staff', 'Staff', 'admin', 'staff'], ['photos', 'Home photos', 'platform', 'photo'], ['settings', 'Settings', 'platform', 'settings'], ['audit', 'Audit log', 'admin', 'audit'],
   ['account', 'My account', 'staff', 'account'],
@@ -40,6 +41,7 @@ function Shell({ user, route, onOut }) {
     switch (page) {
       case 'dashboard': return <Dashboard user={user} onBadges={setBadges} />;
       case 'bookings': return <Bookings user={user} refParam={arg} />;
+      case 'requests': return <Requests />;
       case 'guests': return <Guests user={user} />;
       case 'availability': return <Availability signedIn />;
       case 'types': return <RoomsRates user={user} tab="types" />;
@@ -62,7 +64,7 @@ function Shell({ user, route, onOut }) {
         <div className="brand"><Logo /><div>HOTEL<span>GO</span><small>{user.hotel_name || 'Platform console'}</small></div></div>
         <nav className="nav" onClick={() => setOpen(false)}>
           {NAV.filter((n) => n[2] === 'staff' || (n[2] === 'admin' && admin) || (n[2] === 'platform' && platform)).map(([p, t, , ic]) => (
-            <span key={p}>{p === 'payments' && <small>Owner</small>}{p === 'account' && <small>Account</small>}<a href={'#/' + p} className={page === p ? 'on' : ''}><Icon n={ic} />{p === 'hotels' && !platform ? 'My hotel' : t}{p === 'bookings' && badges.pending > 0 && <em className="badge">{badges.pending}</em>}</a></span>
+            <span key={p}>{p === 'payments' && <small>Owner</small>}{p === 'account' && <small>Account</small>}<a href={'#/' + p} className={page === p ? 'on' : ''}><Icon n={ic} />{p === 'hotels' && !platform ? 'My hotel' : t}{p === 'bookings' && badges.pending > 0 && <em className="badge">{badges.pending}</em>}{p === 'requests' && badges.requests > 0 && <em className="badge">{badges.requests}</em>}</a></span>
           ))}
         </nav>
         <div className="who">
@@ -72,7 +74,7 @@ function Shell({ user, route, onOut }) {
         </div>
       </aside>
       <main className="main">
-        <div className="v2"><div className="row between" style={{ marginBottom: 6 }}><button className="btn small ghost menu-btn" onClick={() => setOpen(!open)}><Icon n="menu" size={16} /> Menu</button><span /><div className="bellbar">{admin && <Bell tick={page} />}</div></div></div>
+        <div className="v2"><div className="row between" style={{ marginBottom: 6 }}><button className="btn small ghost menu-btn" onClick={() => setOpen(!open)}><Icon n="menu" size={16} /> Menu</button><span /><div className="bellbar"><Bell tick={page} admin={admin} /></div></div></div>
         {view()}
       </main>
     </div>

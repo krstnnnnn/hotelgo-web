@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { Confirm, Field, FormModal, Loading, useLoad, useToast, peso, stay, when } from '../ui';
+import { BookingRequests } from './Requests';
 import { Chip, Head, Seg, SearchBox, STATUS, useDebounced } from '../v2';
 
 const toMs = (s) => new Date(String(s).replace(' ', 'T')).getTime();
@@ -153,6 +154,7 @@ function Detail({ bookingRef, user, onChange }) {
         <button className="btn small ghost" onClick={() => setEdit(true)}>Edit guest details</button>
         {user.role === 'admin' && <button className="btn small danger" onClick={() => setDel(true)}>Delete</button>}
       </div>
+      {['confirmed', 'checked_in'].includes(b.status) && <BookingRequests bookingRef={bookingRef} list={d.data.requests || []} online={!!d.data.online} onChange={() => { d.reload(); onChange(); }} />}
       {d.data.payments.length > 0 && <><span className="eyebrow">PAYMENTS</span><table className="tbl"><tbody>{d.data.payments.map((p) => <tr key={p.id}><td className="mono">{p.txn_ref}</td><td>{p.method}</td><td>{peso(p.amount)}</td><td><span className={'chip chip-' + (p.status === 'paid' ? 'teal' : 'grey')}>{p.status.replace('_', ' ')}</span></td></tr>)}</tbody></table></>}
       {d.data.notifications.length > 0 && <><span className="eyebrow">MESSAGES SENT</span><table className="tbl"><tbody>{d.data.notifications.map((n) => <tr key={n.id}><td>{n.channel}</td><td>{n.recipient}</td><td>{n.status}</td></tr>)}</tbody></table></>}
       {edit && <EditGuest b={b} onClose={() => setEdit(false)} onSaved={() => { d.reload(); onChange(); }} />}

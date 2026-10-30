@@ -23,9 +23,14 @@ export const Seg = ({ value, onChange, items }) => <div className="seg">{items.m
 /* the bell in the header: newest messages, a count of the ones not seen yet */
 const SEEN = 'hg_bell_seen';
 const readSeen = () => { try { return Number(localStorage.getItem(SEEN)) || 0; } catch { return 0; } };
-export function Bell({ tick }) {
-  const [log, setLog] = useState([]); const [svc, setSvc] = useState(null); const [open, setOpen] = useState(false); const [seen, setSeen] = useState(readSeen); const [mark, setMark] = useState(0); const box = useRef(null);
-  useEffect(() => { let alive = true; api('GET', '/notifications').then((d) => { if (alive) { setLog(d.data || []); setSvc(d.services || null); } }, () => {}); return () => { alive = false; }; }, [tick]);
+export function Bell({ tick, admin }) {
+  const [log, setLog] = useState([]); const [svc, setSvc] = useState(null); const [reqs, setReqs] = useState([]); const [open, setOpen] = useState(false); const [seen, setSeen] = useState(readSeen); const [mark, setMark] = useState(0); const box = useRef(null);
+  useEffect(() => {
+    let alive = true;
+    if (admin) api('GET', '/notifications').then((d) => { if (alive) { setLog(d.data || []); setSvc(d.services || null); } }, () => {});
+    api('GET', '/requests?status=new').then((d) => { if (alive) setReqs(d.data || []); }, () => {});
+    return () => { alive = false; };
+  }, [tick, admin]);
   useEffect(() => {
     if (!open) return undefined;
     const down = (e) => { if (box.current && !box.current.contains(e.target)) setOpen(false); };
@@ -34,7 +39,8 @@ export function Bell({ tick }) {
     return () => { document.removeEventListener('mousedown', down); document.removeEventListener('keydown', key); };
   }, [open]);
   const ts = (n) => Date.parse(String(n.created_at).replace(' ', 'T')) || 0;
-  const unread = log.filter((n) => ts(n) > seen).length;
+  const newReqs = reqs.length;
+  const unread = log.filter((n) => ts(n) > seen).length + newReqs;
   const toggle = () => {
     if (!open) { setMark(seen); const newest = log.length ? Math.max(...log.map(ts)) : 0; if (newest > seen) { try { localStorage.setItem(SEEN, String(newest)); } catch { /* ignore */ } setSeen(newest); } }
     setOpen(!open);
@@ -46,7 +52,8 @@ export function Bell({ tick }) {
         <div className="card bell-pop" role="dialog" aria-label="Notifications">
           <div className="panel-head"><h2>Notifications</h2><a href="#/notifications" onClick={() => setOpen(false)}>View all</a></div>
           <ul className="bell-list">
-            {log.length === 0 && <li className="muted">Nothing sent yet.</li>}
+            {reqs.slice(0, 5).map((r) => <li key={'r' + r.id}><div className="li-main"><b>New request · {r.service}</b><small>{r.guest_name} · Room {r.room_no || '—'} · {when(r.created_at)}</small></div><a href="#/requests" onClick={() => setOpen(false)}>Open</a></li>)}
+            {log.length === 0 && reqs.length === 0 && <li className="muted">Nothing yet.</li>}
             {log.slice(0, 8).map((n) => (
               <li key={n.id}><div className="li-main"><b>{n.channel === 'sms' ? 'SMS' : 'Email'} · {n.recipient}</b><small>{n.subject || 'Message'} · {when(n.created_at)}</small></div><span className={'chip chip-' + (n.status === 'sent' ? 'teal' : n.status === 'failed' ? 'bad' : 'grey')}>{label(n.status)}</span>{ts(n) > mark && <i className="bell-new" aria-label="New" />}</li>
             ))}
