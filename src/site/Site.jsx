@@ -138,7 +138,7 @@ export function SearchPage() {
         {st.loading && <div className="card center">Looking for free rooms…</div>}
         {st.data && <>
           <h2>{rows.length} room type{rows.length === 1 ? '' : 's'} in {new Set(rows.map((r) => r.hotel_id)).size} hotel{new Set(rows.map((r) => r.hotel_id)).size === 1 ? '' : 's'} for {fmt(st.w.start)} – {fmt(st.w.end)}</h2>
-          <div className="flash info">You choose a room <b>type</b>. The exact room is <b>assigned automatically</b> and sent to you by SMS and email.</div>
+          <div className="flash info">You choose a room <b>type</b>. The exact room is <b>assigned automatically</b> and sent to you by email.</div>
           <div className="stack" style={{ marginTop: 20 }}>
             {rows.map((t, i) => (
               <div className={'result' + (t.free < 1 ? ' full' : '')} key={t.id}>{(t.image_id || t.hotel_image_id) ? <div className="scene photo"><img src={photoUrl(t.image_id || t.hotel_image_id)} alt={t.name} loading="lazy" /></div> : <div className={'scene t' + ((i % 3) + 1)}><i /></div>}
@@ -353,6 +353,6 @@ function faq(c) {
     ['What is the booking fee?', `A small online booking fee of ${peso(c.bookingFee)} is added to the room rate. Walk-in guests who pay cash at the desk do not pay it.`],
     ['What do I need at check-in?', 'Show the QR code or reference number on your ticket and a valid ID. We store only the last 4 characters of the ID number.'],
     ['Is it safe to pay online?', 'Payments run through PayMongo hosted checkout (GCash, Maya, card). Your card or wallet details are never typed on our site.'],
-    ['I did not get my SMS or email. What now?', `Open My bookings after signing in: your ticket and room number are always there. You can also write to us at ${c.email}.`],
+    ['I did not get my email. What now?', `Open My bookings after signing in: your ticket and room number are always there. You can also write to us at ${c.email}.`],
   ];
 }

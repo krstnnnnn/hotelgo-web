@@ -149,7 +149,7 @@ function Detail({ bookingRef, user, onChange }) {
         {b.status === 'checked_in' ? <button className="btn navy" onClick={() => act('checkout')}>Check out</button>
           : <button className="btn ghost" disabled={!editable} onClick={() => window.confirm('Cancel booking ' + bookingRef + '? Paid money is refunded.') && act('cancel')}>Cancel</button>}
       </div>
-      <button className="btn amber btn-block" disabled={!['confirmed', 'checked_in'].includes(b.status)} onClick={() => act('resend')}>Resend SMS / email</button>
+      <button className="btn amber btn-block" disabled={!['confirmed', 'checked_in'].includes(b.status)} onClick={() => act('resend')}>Resend email</button>
       <div className="row" style={{ marginTop: 10 }}>
         <button className="btn small ghost" onClick={() => setEdit(true)}>Edit guest details</button>
         {user.role === 'admin' && <button className="btn small danger" onClick={() => setDel(true)}>Delete</button>}

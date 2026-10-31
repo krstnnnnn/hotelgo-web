@@ -434,7 +434,6 @@ export function BookingPage({ bookingRef }) {
           {Number(b.is_vip) === 1 && ok && <Requests bookingRef={b.booking_ref} d={d} reload={load} />}
         </div>
         <aside className="stack next"><h2 style={{ fontSize: '1.5rem' }}>What happens next</h2>
-          {d.sms && <div className="card"><div className="head"><span className="bubble"><Ico n="message" color="#fff" size={18} /></span><b>{d.sms.status === 'logged' ? 'SMS (not sent)' : 'SMS sent'}</b><span className={'pill ' + pillOf(d.sms.status)}>{d.sms.status}</span></div><div className="msgbox">{d.sms.message}</div></div>}
           {d.mail && <div className="card"><div className="head"><span className="bubble"><Ico n="mail" color="#fff" size={18} /></span><b>{d.mail.status === 'logged' ? 'Email (not sent)' : 'Email sent'}</b><span className={'pill ' + pillOf(d.mail.status)}>{d.mail.status}</span></div>
             <div className="msgbox"><b>{d.mail.subject}</b><br /><span className="mute small">To {d.mail.recipient} · Booking details and directions included</span></div></div>}
           {ok && <><div className="card"><div className="head"><span className="bubble amber"><Ico n="calendar" color="#0B2233" size={18} /></span><b>Add it to your calendar</b></div><p className="mute small">Saves the stay with a reminder 30 minutes before check-in.</p>

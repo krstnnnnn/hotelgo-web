@@ -219,34 +219,34 @@ export function Payments({ user }) {
 
 /* ====================================================== Notifications ====================================================== */
 const RULES = [
-  { id: 'confirmed', event: 'Booking confirmed', sms: true, email: true, timing: 'Instant', tpl: 'HOTELGO: Booking {ref} confirmed. Room {room}, {date}. Show this ref at check-in.' },
-  { id: 'cancelled', event: 'Booking cancelled', sms: true, email: true, timing: 'Instant', tpl: 'HOTELGO: Booking {ref} was cancelled. Any payment is being refunded, {guest}.' },
-  { id: 'changed', event: 'Booking changed', sms: true, email: true, timing: 'Instant', tpl: 'HOTELGO: Booking {ref} now starts {date}, room {room}.' },
-  { id: 'code', event: 'Sign-up / reset code', sms: false, email: true, timing: 'Instant', tpl: 'Your HOTELGO code is 123456. It expires in 10 minutes.' },
+  { id: 'confirmed', event: 'Booking confirmed', email: true, timing: 'Instant', tpl: 'HOTELGO: Booking {ref} confirmed. Room {room}, {date}. Show this ref at check-in.' },
+  { id: 'cancelled', event: 'Booking cancelled', email: true, timing: 'Instant', tpl: 'HOTELGO: Booking {ref} was cancelled. Any payment is being refunded, {guest}.' },
+  { id: 'changed', event: 'Booking changed', email: true, timing: 'Instant', tpl: 'HOTELGO: Booking {ref} now starts {date}, room {room}.' },
+  { id: 'code', event: 'Sign-up / reset code', email: true, timing: 'Instant', tpl: 'Your HOTELGO code is 123456. It expires in 10 minutes.' },
 ];
 const SAMPLE = { guest: 'Maria Santos', ref: 'HG-7K3Q9X', room: '203', date: 'Sat 17 Oct 7:00 PM - 10:00 PM' };
 const fill = (t) => t.replace(/\{(\w+)\}/g, (m, k) => SAMPLE[k] || m);
 export function Notifications() {
   const list = useLoad(() => api('GET', '/notifications')); const [tab, setTab] = useState('rules'); const [selId, setSelId] = useState('confirmed'); const [del, setDel] = useState(null); const [view, setView] = useState(null); const toast = useToast();
-  const log = list.data ? list.data.data : []; const svc = list.data ? list.data.services : null; const rule = RULES.find((r) => r.id === selId);
+  const log = list.data ? list.data.data.filter((n) => n.channel === 'email') : []; const svc = list.data ? list.data.services : null; const rule = RULES.find((r) => r.id === selId);
   const Svc = ({ on, name }) => <span className={'chip chip-' + (on ? 'teal' : 'warn')}>{name} · {on ? 'Connected' : 'Off'}</span>;
   const table = (rows) => (
     <table className="tbl"><thead><tr><th>WHEN</th><th>CHANNEL</th><th>TO</th><th>STATUS</th><th /></tr></thead><tbody>
       {rows.length === 0 && <tr><td colSpan="5" className="muted">Nothing sent yet.</td></tr>}
-      {rows.map((n) => <tr key={n.id}><td>{when(n.created_at)}</td><td><b>{n.channel === 'sms' ? 'SMS' : 'Email'}</b></td><td>{n.recipient}</td><td><span className={'chip chip-' + (n.status === 'sent' ? 'teal' : n.status === 'failed' ? 'bad' : 'grey')}>{n.status === 'failed' ? 'Failed' : label(n.status)}</span></td>
+      {rows.map((n) => <tr key={n.id}><td>{when(n.created_at)}</td><td><b>Email</b></td><td>{n.recipient}</td><td><span className={'chip chip-' + (n.status === 'sent' ? 'teal' : n.status === 'failed' ? 'bad' : 'grey')}>{n.status === 'failed' ? 'Failed' : label(n.status)}</span></td>
         <td><div className="row"><button className="btn small ghost" onClick={() => setView(n)}>Read</button>{n.status === 'failed' && <button className="btn small" onClick={async () => { try { const r = await api('POST', '/notifications/' + n.id + '/retry'); toast(r.message); list.reload(); } catch (e) { toast(e.message, 'bad'); } }}>Retry</button>}<button className="btn small danger" onClick={() => setDel(n)}>Delete</button></div></td></tr>)}</tbody></table>
   );
   return (
     <div className="v2">
-      <Head title="Notifications" sub="SMS and email sent automatically on booking events">{svc && <><Svc on={svc.sms} name="SMS service" /><Svc on={svc.email} name="Email service" /></>}</Head>
+      <Head title="Notifications" sub="Emails sent automatically on booking events">{svc && <Svc on={svc.email} name="Email service" />}</Head>
       <div className="toolbar"><Seg value={tab} onChange={setTab} items={[['rules', 'Automatic messages'], ['log', 'Delivery log']]} /></div>
       <Loading state={list} />
       <div className="split">
         <div>
           {tab === 'rules' ? <>
-            <section className="card panel"><table className="tbl"><thead><tr><th>EVENT</th><th>SMS</th><th>EMAIL</th><th>TIMING</th></tr></thead><tbody>
-              {RULES.map((r) => <tr key={r.id} className={'row-click' + (r.id === selId ? ' on' : '')} onClick={() => setSelId(r.id)}><td><b>{r.event}</b></td><td>{r.sms ? '✓' : '—'}</td><td>{r.email ? '✓' : '—'}</td><td>{r.timing}</td></tr>)}</tbody></table>
-              <p className="hint">These are the messages the system sends by itself. SMS and email are only really delivered when the services are connected (Settings).</p></section>
+            <section className="card panel"><table className="tbl"><thead><tr><th>EVENT</th><th>EMAIL</th><th>TIMING</th></tr></thead><tbody>
+              {RULES.map((r) => <tr key={r.id} className={'row-click' + (r.id === selId ? ' on' : '')} onClick={() => setSelId(r.id)}><td><b>{r.event}</b></td><td>{r.email ? '✓' : '—'}</td><td>{r.timing}</td></tr>)}</tbody></table>
+              <p className="hint">These are the messages the system sends by itself. Emails are only really delivered when the email service is connected (Settings).</p></section>
             <h2 style={{ margin: '20px 0 10px', fontSize: 17 }}>Recent delivery log</h2><section className="card panel scroll">{table(log.slice(0, 3))}</section>
           </> : <section className="card panel scroll">{table(log)}</section>}
         </div>
@@ -313,7 +313,6 @@ export function Reports({ user }) {
 /* ========================================================= Settings ========================================================= */
 const SERVICES = [
   ['Online payment gateway', 'Accepts e-wallet (GCash, Maya, GrabPay, ShopeePay), card and bank payments through PayMongo; handles refunds.', 'PAYMENT_PROVIDER, PAYMONGO_PUBLIC_KEY, PAYMONGO_SECRET_KEY'],
-  ['SMS notification service', 'Booking confirmations and OTP codes. Optional and paid.', 'SMS_PROVIDER, SMS_API_KEY'],
   ['Google Maps', 'Maps, hotel pins and directions (a free map is used without a key).', 'GOOGLE_MAPS_KEY'],
   ['Email notification service', 'Receipts, confirmations and sign-up codes.', 'EMAIL_PROVIDER, APPS_SCRIPT_URL'],
   ['Google Calendar', 'Every paid booking is added to the hotel\u2019s Google Calendar, updated when it changes and removed when it is cancelled. Guests also download a calendar file.', 'GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_CALENDAR_ID'],
