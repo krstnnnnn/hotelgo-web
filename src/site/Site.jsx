@@ -1,12 +1,17 @@
 /* The public website: landing page + room search. Styled by assets/site.css (same design as the PHP site). */
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../api';
-import { cfg, photoUrl, SITE } from './config';
+import { cfg, photoUrl } from './config';
 import { Included, VipBadge } from '../ui';
 
 const peso = (n) => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const iso = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 10); };
 const today = () => iso(new Date());
+/* the next half hour that is still ahead of us (a search for a time that has passed finds nothing) */
+const slot = () => {
+  const d = new Date(Date.now() + 30 * 60000); d.setSeconds(0, 0); d.setMinutes(d.getMinutes() > 30 ? 60 : d.getMinutes() > 0 ? 30 : 0);
+  return { date: iso(d), time: String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') };
+};
 const plus = (days) => iso(new Date(Date.now() + days * 86400000));
 
 /* Switch between the website stylesheet and the staff console stylesheet */
@@ -25,7 +30,11 @@ export function jump(id) {
 }
 const Jump = ({ id, className, children }) => <a className={className} href="#/" onClick={(e) => { e.preventDefault(); jump(id); }}>{children}</a>;
 
-function Layout({ landing, signedIn, children }) {
+/* who is signed in (set by the App in main.jsx): { user, onOut } */
+export const SiteCtx = createContext({ user: null, onOut: () => {} });
+
+export function Layout({ landing, children }) {
+  const { user, onOut } = useContext(SiteCtx); const staff = !!user && user.role !== 'guest'; const guest = !!user && user.role === 'guest';
   const [scrolled, setScrolled] = useState(false); const [open, setOpen] = useState(false);
   useEffect(() => {
     document.body.classList.toggle('is-landing', !!landing);
@@ -47,19 +56,21 @@ function Layout({ landing, signedIn, children }) {
           <Jump className="link" id="gallery">Gallery</Jump>
           <Jump className="link" id="help">Help</Jump>
           <Jump className="link" id="contact">Contact</Jump>
-          {signedIn && <a className="link" href="#/dashboard">Admin area</a>}
+          {staff && <a className="link" href="#/dashboard">Admin area</a>}
+          {guest && <a className="link" href="#/my-bookings">My bookings</a>}
         </nav>
         <div className="row">
-          <a className="btn btn-out btn-sm" href={SITE + '/login'}>Sign in</a>
-          <a className="btn btn-amber btn-sm" href={landing ? '#/search' : SITE + '/register'}>{landing ? 'Book now' : 'Register'}</a>
+          {user ? <button className="btn btn-out btn-sm" type="button" onClick={onOut}>Sign out</button> : <a className="btn btn-out btn-sm" href="#/login">Sign in</a>}
+          {!user && <a className="btn btn-amber btn-sm" href={landing ? '#/search' : '#/register'}>{landing ? 'Book now' : 'Register'}</a>}
+          {user && <a className="btn btn-amber btn-sm" href="#/search">Book now</a>}
         </div>
       </div></header>
       <main>{children}</main>
       <footer><div className="container grid lp-foot">
         <div><div className="logo" style={{ color: '#fff' }}><span>HOTEL<b style={{ color: '#F5A524' }}>GO</b></span></div><p className="small">Hourly and overnight motel booking for Puerto Galera, Oriental Mindoro.</p>
           <p className="small"><a href={'mailto:' + c.email}>{c.email}</a><a href={'tel:' + c.phone}>{c.phone}</a><span>{c.location}</span></p></div>
-        <div><h4>Guests</h4><a href="#/search">Search rooms</a><a href={SITE + '/my-bookings'}>My bookings</a><Jump id="help">Help &amp; FAQ</Jump><Jump id="contact">Contact us</Jump></div>
-        <div><h4>Legal</h4><a href={SITE + '/terms'}>Terms of Service</a><a href={SITE + '/privacy'}>Privacy Policy</a><a href={SITE + '/cancellation-policy'}>Cancellation &amp; refunds</a><a href={SITE + '/house-rules'}>House rules</a></div>
+        <div><h4>Guests</h4><a href="#/search">Search rooms</a><a href="#/my-bookings">My bookings</a><Jump id="help">Help &amp; FAQ</Jump><Jump id="contact">Contact us</Jump></div>
+        <div><h4>Legal</h4><a href="#/terms">Terms of Service</a><a href="#/privacy">Privacy Policy</a><a href="#/cancellation-policy">Cancellation &amp; refunds</a><a href="#/house-rules">House rules</a></div>
       </div><div className="container small" style={{ marginTop: 24, borderTop: '1px solid #14344A', paddingTop: 16 }}>© {new Date().getFullYear()} HOTELGO · Puerto Galera, Oriental Mindoro, Philippines</div></footer>
     </>
   );
@@ -67,7 +78,7 @@ function Layout({ landing, signedIn, children }) {
 
 /* ---- search form (same as the PHP site) ---- */
 function SearchForm({ init, onGo, areas = [] }) {
-  const [q, setQ] = useState({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2, area: '', ...init });
+  const [q, setQ] = useState({ stay: 'hourly', date: slot().date, time: slot().time, hours: 3, guests: 2, area: '', ...init });
   const set = (k) => (e) => setQ({ ...q, [k]: e.target.value });
   const times = []; for (let m = 0; m < 1440; m += 30) { const h = Math.floor(m / 60), mm = m % 60; times.push([`${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`, `${h % 12 || 12}:${String(mm).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`]); }
   return (
@@ -102,9 +113,9 @@ const usePhotos = () => {
 };
 
 /* ---- room search results ---- */
-export function SearchPage({ signedIn }) {
+export function SearchPage() {
   const raw = new URLSearchParams(location.hash.split('?')[1] || '');
-  const p = { stay: raw.get('stay') === 'overnight' ? 'overnight' : 'hourly', date: raw.get('date') || plus(0), time: raw.get('time') || '19:00', hours: raw.get('hours') || '3', guests: raw.get('guests') || '2' };
+  const p = { stay: raw.get('stay') === 'overnight' ? 'overnight' : 'hourly', date: raw.get('date') || slot().date, time: raw.get('time') || slot().time, hours: raw.get('hours') || '3', guests: raw.get('guests') || '2' };
   if (raw.get('area')) p.area = raw.get('area');
   if (raw.get('hotel')) p.hotel = raw.get('hotel');
   const key = JSON.stringify(p);
@@ -120,7 +131,7 @@ export function SearchPage({ signedIn }) {
   const rows = st.data || [];
   const fmt = (s) => new Date(String(s).replace(' ', 'T')).toLocaleString('en-PH', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
   return (
-    <Layout signedIn={signedIn}>
+    <Layout>
       <div className="container section" style={{ paddingTop: 100 }}>
         <div className="card" style={{ marginBottom: 20 }}><SearchForm key={key} init={p} onGo={goSearch} areas={hot ? hot.areas : []} /></div>
         {st.error && <div className="flash bad">{st.error}</div>}
@@ -137,7 +148,7 @@ export function SearchPage({ signedIn }) {
                   <div className="chips">{String(t.amenities || '').split(',').map((a) => a.trim()).filter(Boolean).map((a) => <span className="chip" key={a}>{a}</span>)}<span className="chip">Up to {t.max_guests} guests</span></div>
                   <p className="small mute" style={{ margin: '10px 0 0' }}>Free cancellation until {cfg.site.cancelHours} hours before check-in</p></div>
                 <div className="buy"><div className="price">{peso(t.price)}</div><div className="small mute">{p.stay === 'overnight' ? 'overnight' : st.w.hours + ' hrs'} · fee added at checkout</div>
-                  {t.free > 0 ? <a className="btn" style={{ marginTop: 12 }} href={SITE + '/book?' + new URLSearchParams({ ...p, type: t.id })}>Select room</a> : <span className="small mute">Try another time</span>}</div></div>
+                  {t.free > 0 ? <a className="btn" style={{ marginTop: 12 }} href={'#/book?' + new URLSearchParams({ ...p, type: t.id })}>Select room</a> : <span className="small mute">Try another time</span>}</div></div>
             ))}
             {rows.length === 0 && <div className="card center">No room type fits that. Try fewer guests or another area.</div>}
           </div>
@@ -157,21 +168,15 @@ const OFFERS = [
   ['Privacy first', 'We keep only the last 4 digits of your ID. Only staff you need can see your record.', 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z'],
 ];
 const GALLERY = [['g1.svg', 'Sunset over the bay', 'Sunsets'], ['g5.svg', 'Palm-lined beach', 'Beach'], ['g3.svg', 'A quiet room with a sea view', 'Rooms'], ['g4.svg', 'The reefs of Puerto Galera', 'Reefs'], ['g2.svg', 'Bangka boats at midday', 'Boats'], ['g6.svg', 'Night terrace under the lanterns', 'Evenings']];
-const VOICES = [
-  ['Booking took less than two minutes and the room was ready when we arrived.', 'Sample guest · Hourly stay'],
-  ['I liked paying by GCash and getting the QR ticket on my phone. No waiting at the desk.', 'Sample guest · Overnight stay'],
-  ['Clean room, calm evening, easy to move our time when the ferry was late.', 'Sample guest · Changed booking'],
-];
 const img = (n) => 'assets/img/' + n;
 const osm = (la, lo, d) => 'https://www.openstreetmap.org/export/embed.html?bbox=' + encodeURIComponent(`${lo - d},${la - d * 0.6},${lo + d},${la + d * 0.6}`) + '&layer=mapnik&marker=' + encodeURIComponent(`${la},${lo}`);
 
-export function Landing({ signedIn }) {
+export function Landing() {
   const c = cfg.site;
   const [types, setTypes] = useState(null);
   const hot = useHotels(); const hotels = hot ? hot.data : null;
   const ph = usePhotos(); const pic = (slot, fb) => (ph[slot] ? photoUrl(ph[slot]) : img(fb));
   const [place, setPlace] = useState(0);
-  const [voice, setVoice] = useState(0);
   const [box, setBox] = useState(-1);
   const [note, setNote] = useState({ t: 'This opens your email app with the message ready to send.', bad: false });
 
@@ -199,7 +204,6 @@ export function Landing({ signedIn }) {
     return () => { window.removeEventListener('scroll', on); if (io) io.disconnect(); };
   }, [types]);
 
-  useEffect(() => { const t = setInterval(() => setVoice((v) => (v + 1) % VOICES.length), 6000); return () => clearInterval(t); }, []);
   useEffect(() => {
     if (box < 0) return undefined;
     document.body.style.overflow = 'hidden';
@@ -218,7 +222,7 @@ export function Landing({ signedIn }) {
   };
 
   return (
-    <Layout landing signedIn={signedIn}>
+    <Layout landing>
       <section className="lp-hero" id="top">
         <img className="lp-hero-img" src={pic('hero', 'hero.svg')} alt="" data-parallax />
         <div className="lp-hero-shade" />
@@ -253,7 +257,7 @@ export function Landing({ signedIn }) {
             <article className={'card flat lp-room reveal d' + (i % 3)} key={h.id}>
               <div className="lp-room-img"><img src={h.image_id ? photoUrl(h.image_id) : img(['g5.svg', 'g1.svg', 'g4.svg', 'g2.svg'][i % 4])} alt={h.name} loading="lazy" /><span className="lp-tag">{h.area}</span></div>
               <div className="lp-room-body"><h3>{h.name}</h3><p className="mute small">{h.description}</p>
-                <div className="lp-prices"><div><span className="small mute">From</span><b>{peso(h.from_price)} / 3 hrs</b></div><a className="btn btn-sm" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2, hotel: h.id })}>View rooms</a></div></div>
+                <div className="lp-prices"><div><span className="small mute">From</span><b>{peso(h.from_price)} / 3 hrs</b></div><a className="btn btn-sm" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: slot().date, time: slot().time, hours: 3, guests: 2, hotel: h.id })}>View rooms</a></div></div>
             </article>
           ))}
         </div></div></section>
@@ -268,11 +272,11 @@ export function Landing({ signedIn }) {
               <div className="lp-room-img"><img src={t.image_id ? photoUrl(t.image_id) : t.hotel_image_id ? photoUrl(t.hotel_image_id) : img(['g3.svg', 'g1.svg', 'g5.svg', 'g4.svg'][i % 4])} alt={t.name} loading="lazy" /><span className="lp-tag">From {peso(t.p3)} / 3 hrs</span></div>
               <div className="lp-room-body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t.hotel_name} · {t.hotel_area}</div><h3>{t.name} <VipBadge t={t} /></h3><p className="mute small">{t.description}</p><Included t={t} />
                 <ul className="lp-amen">{String(t.amenities || '').split(',').slice(0, 4).map((a) => <li key={a}>{a.trim()}</li>)}<li>Up to {t.max_guests} guests</li></ul>
-                <div className="lp-prices"><div><span className="small mute">Overnight</span><b>{peso(t.pn)}</b></div><a className="btn btn-sm" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2, hotel: t.hotel_id })}>Book now</a></div></div>
+                <div className="lp-prices"><div><span className="small mute">Overnight</span><b>{peso(t.pn)}</b></div><a className="btn btn-sm" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: slot().date, time: slot().time, hours: 3, guests: 2, hotel: t.hotel_id })}>Book now</a></div></div>
             </article>
           ))}
         </div>
-        {types && types.length > 6 && <p className="center" style={{ marginTop: 24 }}><a className="btn btn-out" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: today(), time: '19:00', hours: 3, guests: 2 })}>See all {types.length} room types</a></p>}
+        {types && types.length > 6 && <p className="center" style={{ marginTop: 24 }}><a className="btn btn-out" href={'#/search?' + new URLSearchParams({ stay: 'hourly', date: slot().date, time: slot().time, hours: 3, guests: 2 })}>See all {types.length} room types</a></p>}
         </div></section>
 
       <section className="section lp-dark" id="offer"><div className="container"><div className="center"><div className="eyebrow reveal" style={{ color: '#F5A524' }}>What we offer</div><h2 className="reveal">Everything for <em>a short stay</em></h2></div>
@@ -304,18 +308,10 @@ export function Landing({ signedIn }) {
         <div className="lp-gallery">{GALLERY.map(([f, alt, cap], i) => (
           <button type="button" className={'lp-g g' + (i + 1) + ' reveal'} key={f} onClick={() => setBox(i)}><img src={pic('gallery' + (i + 1), f)} alt={alt} loading="lazy" /><span>{cap}</span></button>
         ))}</div></div></section>
-
-      <section className="section lp-voices" id="voices"><div className="container"><div className="center"><div className="eyebrow reveal">Guest voices</div><h2 className="reveal">Memories that <em>last</em></h2></div>
-        <div className="lp-slider reveal">
-          {VOICES.map(([q, who], i) => <figure className={'lp-voice' + (voice === i ? ' on' : '')} key={who}><blockquote>“{q}”</blockquote><figcaption>{who}</figcaption></figure>)}
-          <div className="lp-dots" role="tablist" aria-label="Guest voices">{VOICES.map((_, i) => <button type="button" key={i} className={voice === i ? 'on' : ''} aria-label={'Show comment ' + (i + 1)} onClick={() => setVoice(i)} />)}</div>
-        </div>
-        <p className="small mute center">Sample comments for demonstration. They are replaced by real guest reviews as guests stay with us.</p></div></section>
-
       <section className="section" id="help" style={{ paddingTop: 20 }}><div className="container grid g2" style={{ alignItems: 'start' }}>
         <div className="reveal"><div className="eyebrow">Help</div><h2>Questions, <em>answered</em></h2><p className="mute">Cannot find yours? Write to us and we will reply.</p>
           <p><a className="btn btn-out" href={'mailto:' + c.email}>Email {c.email}</a></p>
-          <p className="small"><a href={SITE + '/terms'}>Terms</a> · <a href={SITE + '/privacy'}>Privacy</a> · <a href={SITE + '/cancellation-policy'}>Cancellation &amp; refunds</a> · <a href={SITE + '/house-rules'}>House rules</a></p></div>
+          <p className="small"><a href="#/terms">Terms</a> · <a href="#/privacy">Privacy</a> · <a href="#/cancellation-policy">Cancellation &amp; refunds</a> · <a href="#/house-rules">House rules</a></p></div>
         <div className="reveal d1">{faq(c).map(([q, a]) => <details className="lp-faq" key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
       </div></section>
 

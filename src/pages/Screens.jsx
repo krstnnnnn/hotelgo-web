@@ -229,7 +229,7 @@ const fill = (t) => t.replace(/\{(\w+)\}/g, (m, k) => SAMPLE[k] || m);
 export function Notifications() {
   const list = useLoad(() => api('GET', '/notifications')); const [tab, setTab] = useState('rules'); const [selId, setSelId] = useState('confirmed'); const [del, setDel] = useState(null); const [view, setView] = useState(null); const toast = useToast();
   const log = list.data ? list.data.data : []; const svc = list.data ? list.data.services : null; const rule = RULES.find((r) => r.id === selId);
-  const Svc = ({ on, name }) => <span className={'chip chip-' + (on ? 'teal' : 'warn')}>{name} · {on ? 'Connected' : 'Demo mode'}</span>;
+  const Svc = ({ on, name }) => <span className={'chip chip-' + (on ? 'teal' : 'warn')}>{name} · {on ? 'Connected' : 'Off'}</span>;
   const table = (rows) => (
     <table className="tbl"><thead><tr><th>WHEN</th><th>CHANNEL</th><th>TO</th><th>STATUS</th><th /></tr></thead><tbody>
       {rows.length === 0 && <tr><td colSpan="5" className="muted">Nothing sent yet.</td></tr>}

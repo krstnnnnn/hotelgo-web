@@ -58,7 +58,7 @@ export function Bell({ tick, admin }) {
               <li key={n.id}><div className="li-main"><b>{n.channel === 'sms' ? 'SMS' : 'Email'} · {n.recipient}</b><small>{n.subject || 'Message'} · {when(n.created_at)}</small></div><span className={'chip chip-' + (n.status === 'sent' ? 'teal' : n.status === 'failed' ? 'bad' : 'grey')}>{label(n.status)}</span>{ts(n) > mark && <i className="bell-new" aria-label="New" />}</li>
             ))}
           </ul>
-          {svc && (!svc.sms || !svc.email) && <p className="hint">{!svc.sms && !svc.email ? 'SMS and email are' : !svc.sms ? 'SMS is' : 'Email is'} in demo mode: messages are saved here, not sent.</p>}
+          {svc && (!svc.sms || !svc.email) && <p className="hint">{!svc.sms && !svc.email ? 'SMS and email are' : !svc.sms ? 'SMS is' : 'Email is'} switched off: those messages are saved here, not sent.</p>}
         </div>
       )}
     </div>

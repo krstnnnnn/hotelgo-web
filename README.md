@@ -63,3 +63,12 @@ Platform admin: *Home photos* in the menu. Hotel owner / platform admin: *Hotels
 
 The landing page lists every hotel (from `GET /api/hotels`), the map shows all of them, and guests can search by area or hotel.
 In the staff console the **Hotels** page is for the platform admin (all hotels) or the hotel owner ("My hotel"). Front-desk staff only see their own hotel everywhere.
+
+
+## What this website contains
+
+This one React project is the **whole website**; the API (`hotelgo`) has no pages.
+
+- **Guests:** landing, room search, register / verify / sign in / forgot password, checkout, pay, booking page (QR, calendar file, VIP requests), receipt, my bookings, change password, legal pages.
+- **Staff / owner:** the console at the hidden address `/#/<STAFF_PATH>`.
+- Build variables: `API_URL` (e.g. `https://hotelgo.onrender.com/api`) and `STAFF_PATH`. The API's `FRONTEND_URL` must be this site's address.

@@ -2,7 +2,8 @@ import { Component, StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { api, restore, signOut } from './api';
 import { Toasts } from './ui';
-import { Landing, SearchPage, useSkin } from './site/Site';
+import { Landing, Layout, SearchPage, SiteCtx, useSkin } from './site/Site';
+import { BookingPage, Checkout, GuestForgot, GuestLogin, GuestPassword, GuestRegister, GuestReset, GuestVerify, Legal, Modify, MyBookings, NeedGuest, Pay, Receipt } from './site/Guest';
 import { cfg } from './site/config';
 import { Icon, Logo } from './icons';
 import { Availability, ChangePassword, Login } from './pages/Auth';
@@ -82,21 +83,52 @@ function Shell({ user, route, onOut }) {
 }
 const NoAccess = () => <div className="card empty">Only the owner can open this page.</div>;
 
+const CONSOLE_PAGES = NAV.map((n) => n[0]);
+const LEGAL = ['terms', 'privacy', 'cancellation-policy', 'house-rules'];
+
+/* the guest part of the website: sign-in, booking, payment, my bookings, legal pages */
+function guestPage(route, user, setUser) {
+  const [page, a, b] = route;
+  switch (page) {
+    case 'login': return <GuestLogin onUser={setUser} />;
+    case 'register': return <GuestRegister />;
+    case 'verify': return <GuestVerify onUser={setUser} />;
+    case 'forgot': return <GuestForgot />;
+    case 'reset': return <GuestReset />;
+    case 'book': return <NeedGuest user={user}><Checkout user={user} /></NeedGuest>;
+    case 'pay': return <NeedGuest user={user}><Pay bookingRef={a} /></NeedGuest>;
+    case 'my-bookings': return <NeedGuest user={user}><MyBookings /></NeedGuest>;
+    case 'my-password': return <NeedGuest user={user}><GuestPassword /></NeedGuest>;
+    case 'booking': return <NeedGuest user={user}>{b === 'modify' ? <Modify bookingRef={a} /> : <BookingPage bookingRef={a} />}</NeedGuest>;
+    case 'receipt': return <NeedGuest user={user}><Receipt bookingRef={a} /></NeedGuest>;
+    default: return LEGAL.includes(page) ? <Legal page={page} /> : null;
+  }
+}
+const GUEST_PAGES = ['login', 'register', 'verify', 'forgot', 'reset', 'book', 'pay', 'my-bookings', 'my-password', 'booking', 'receipt', ...LEGAL];
+
 function App() {
   const route = useRoute();
   const [user, setUser] = useState(undefined);       // undefined = still checking, null = signed out
   useEffect(() => { restore().then(setUser); }, []);
   const page = route[0] || '';
+  const staff = !!user && user.role !== 'guest';
   const isDoor = !!cfg.staffPath && page === cfg.staffPath;          // the secret staff address
-  const isStaffPage = !!user && page !== '' && page !== 'search' && !isDoor;
-  useSkin(isStaffPage || isDoor ? 'console' : 'site');
+  const isConsole = staff && CONSOLE_PAGES.includes(page);
+  useSkin(isConsole || isDoor ? 'console' : 'site');
+  const out = async () => { await signOut(); setUser(null); location.hash = '#/'; };
   if (user === undefined) return <div className="login"><div className="card">Loading…</div></div>;
-  if (page === 'search') return <SearchPage signedIn={!!user} />;
-  if (isDoor && !user) return <Login onUser={(u) => { setUser(u); location.hash = '#/dashboard'; }} />;
-  if (isDoor && user) { location.hash = '#/dashboard'; return null; }
-  if (!user || page === '') return <Landing signedIn={!!user} />;   // visitors see only the website
-  if (Number(user.must_change_password)) return <ChangePassword forced onDone={() => setUser({ ...user, must_change_password: 0 })} />;
-  return <Shell user={user} route={route} onOut={async () => { await signOut(); setUser(null); location.hash = '#/'; }} />;
+  if (isDoor && !staff) return <Login onUser={(u) => { setUser(u); location.hash = '#/dashboard'; }} />;
+  if (isDoor && staff) { location.hash = '#/dashboard'; return null; }
+  if (isConsole) {
+    if (Number(user.must_change_password)) return <ChangePassword forced onDone={() => setUser({ ...user, must_change_password: 0 })} />;
+    return <Shell user={user} route={route} onOut={out} />;
+  }
+  const guestView = GUEST_PAGES.includes(page) ? guestPage(route, user, setUser) : null;
+  return (
+    <SiteCtx.Provider value={{ user, onOut: out }}>
+      {page === 'search' ? <SearchPage /> : guestView ? <Layout>{guestView}</Layout> : <Landing />}
+    </SiteCtx.Provider>
+  );
 }
 
 /* A page that crashes shows a message instead of a blank screen */
