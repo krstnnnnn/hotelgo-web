@@ -88,30 +88,76 @@ export default function Bookings({ user, refParam }) {
   );
 }
 
+/* New booking at the front desk: hotel, room type, arrival, stay, guest, how it is paid, and a live total */
+const PAY_MODES = [['now', 'Pay now'], ['later', 'Pay later'], ['online', 'Pay online']];
+const PAY_METHODS = [['cash', 'Cash'], ['ewallet', 'E-wallet'], ['card', 'Card'], ['bank', 'Bank / OTC']];
+const two = (n) => String(n).padStart(2, '0');
+const localInput = (d) => d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate()) + 'T' + two(d.getHours()) + ':' + two(d.getMinutes());
+const dayTime = (d) => d.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const clock = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+const clock12 = (t) => { const [h, m] = String(t).split(':').map(Number); return clock(new Date(2000, 0, 1, h, m)); };
+
 function Walkin({ onClose, onDone }) {
   const types = useLoad(() => api('GET', '/room-types'));
-  const [f, setF] = useState({ room_type_id: '', stay: 'hourly', hours: 3, guests: 1, name: '', mobile: '', pay: 'cash' });
   const toast = useToast();
+  const all = types.data?.data || [];
+  const night = types.data?.overnight || { start: '20:00', end: '12:00' };
+  const hotels = all.filter((t, i) => all.findIndex((x) => x.hotel_id === t.hotel_id) === i).map((t) => ({ id: String(t.hotel_id), name: t.hotel_name }));
+  const [f, setF] = useState({ hotel_id: '', room_type_id: '', stay: 'hourly', hours: 3, arrival: localInput(new Date()), name: '', mobile: '', pay_mode: 'now', method: 'cash' });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const hotelId = f.hotel_id || (hotels[0] && hotels[0].id) || '';
+  const list = all.filter((t) => String(t.hotel_id) === hotelId);
+  const type = list.find((t) => String(t.id) === String(f.room_type_id)) || list[0];
+  const stays = type ? [
+    { stay: 'hourly', hours: 3, label: '3 hrs', sub: 'Hourly', price: type.price_3h },
+    { stay: 'hourly', hours: 6, label: '6 hrs', sub: 'Hourly', price: type.price_6h },
+    { stay: 'hourly', hours: 12, label: '12 hrs', sub: 'Hourly', price: type.price_12h },
+    { stay: 'overnight', hours: 0, label: 'Overnight', sub: clock12(night.start).replace(':00', '') + ' – ' + clock12(night.end).replace(':00', ''), price: type.price_overnight },
+  ] : [];
+  const pick = stays.find((s) => s.stay === f.stay && (s.stay === 'overnight' || s.hours === Number(f.hours))) || stays[0];
+  // when the guest arrives and leaves (overnight always starts at the hotel's overnight time)
+  const arr = new Date(f.arrival);
+  const valid = !isNaN(arr.getTime());
+  let from = null; let to = null;
+  if (pick && valid) {
+    if (pick.stay === 'overnight') {
+      const [sh, sm] = night.start.split(':').map(Number); const [eh, em] = night.end.split(':').map(Number);
+      from = new Date(arr.getFullYear(), arr.getMonth(), arr.getDate(), sh, sm); to = new Date(arr.getFullYear(), arr.getMonth(), arr.getDate() + 1, eh, em);
+    } else { from = arr; to = new Date(arr.getTime() + pick.hours * 3600000); }
+  }
+  const outBy = to && from ? (to.toDateString() === from.toDateString() ? clock(to) : dayTime(to)) : '';
   const save = async () => {
-    const r = await api('POST', '/bookings', { ...f, room_type_id: Number(f.room_type_id), hours: Number(f.hours), guests: Number(f.guests) });
-    toast(f.pay === 'online' ? 'Room ' + r.data.room_no + ' held. Now send the guest a payment link.' : 'Walk-in booked: room ' + r.data.room_no + '.'); onDone(r.data.booking_ref);
+    if (!type || !pick || !valid) throw new Error('Choose a hotel, a room type and an arrival time.');
+    const [date, time] = f.arrival.split('T');
+    const r = await api('POST', '/bookings', { room_type_id: Number(type.id), stay: pick.stay, hours: pick.hours || 3, guests: 1, date, time, name: f.name, mobile: f.mobile, pay_mode: f.pay_mode, method: f.method });
+    toast(f.pay_mode === 'online' ? 'Room ' + r.data.room_no + ' held. Now send the guest a payment link.' : f.pay_mode === 'later' ? 'Room ' + r.data.room_no + ' reserved. Collect the payment at the desk.' : 'Booking created: room ' + r.data.room_no + '.');
+    onDone(r.data.booking_ref);
   };
   return (
- <FormModal title="Walk-in booking" onClose={onClose} onSave={save} save="Book room">
+    <FormModal title="New booking" onClose={onClose} onSave={save} save="Create booking">
       <Loading state={types} />
       <div className="grid2">
-        <Field label="Room type"><select value={f.room_type_id} onChange={set('room_type_id')} required><option value="">Choose…</option>{(types.data?.data || []).map((t) => <option key={t.id} value={t.id}>{t.name} (up to {t.max_guests})</option>)}</select></Field>
-        <Field label="Stay"><select value={f.stay} onChange={set('stay')}><option value="hourly">Hourly</option><option value="overnight">Overnight</option></select></Field>
-        {f.stay === 'hourly' && <Field label="Hours"><select value={f.hours} onChange={set('hours')}><option>3</option><option>6</option><option>12</option></select></Field>}
-        <Field label="Guests"><input type="number" min="1" value={f.guests} onChange={set('guests')} required /></Field>
-        <Field label="Guest name"><input value={f.name} onChange={set('name')} required minLength={2} /></Field>
-        <Field label="Mobile number"><input value={f.mobile} onChange={set('mobile')} placeholder="09171234567" required /></Field>
+        <Field label="Hotel"><select value={hotelId} onChange={(e) => setF({ ...f, hotel_id: e.target.value, room_type_id: '' })} disabled={hotels.length < 2}>{hotels.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}</select></Field>
+        <Field label="Room type"><select value={type ? String(type.id) : ''} onChange={set('room_type_id')} required>{list.map((t) => <option key={t.id} value={t.id}>{t.name} · up to {t.max_guests}</option>)}</select></Field>
       </div>
-      <div className="paychoice" role="radiogroup" aria-label="How will the guest pay?">
-        <label className={f.pay === 'cash' ? 'on' : ''}><input type="radio" name="pay" checked={f.pay === 'cash'} onChange={() => setF({ ...f, pay: 'cash' })} /><b>Cash at the desk</b><small>Confirmed right away</small></label>
-        <label className={f.pay === 'online' ? 'on' : ''}><input type="radio" name="pay" checked={f.pay === 'online'} onChange={() => setF({ ...f, pay: 'online' })} /><b>GCash, Maya or card</b><small>Room is held while the guest pays</small></label>
+      <Field label="Arrival date & time"><input type="datetime-local" value={f.arrival} onChange={set('arrival')} required /></Field>
+      <div className="lbl">Stay</div>
+      <div className="staycards" role="radiogroup" aria-label="Stay">
+        {stays.map((s) => { const on = pick && s.stay === pick.stay && s.hours === pick.hours; return (
+          <button type="button" key={s.label} role="radio" aria-checked={!!on} className={on ? 'on' : ''} onClick={() => setF({ ...f, stay: s.stay, hours: s.hours || 3 })}>
+            <b>{s.label}</b><span className="pr">₱{Number(s.price).toLocaleString('en-PH')}</span><small>{s.sub}</small>
+          </button>); })}
       </div>
+      <div className="grid2">
+        <Field label="Guest name"><input value={f.name} onChange={set('name')} placeholder="e.g. Juan Dela Cruz" required minLength={2} /></Field>
+        <Field label="Mobile (optional)"><input value={f.mobile} onChange={set('mobile')} placeholder="0917 123 4567" inputMode="tel" /></Field>
+      </div>
+      <div className="lbl">Payment</div>
+      <Seg value={f.pay_mode} onChange={(v) => setF({ ...f, pay_mode: v })} items={PAY_MODES} />
+      {f.pay_mode === 'now' && <div style={{ marginTop: 8 }}><Seg value={f.method} onChange={(v) => setF({ ...f, method: v })} items={PAY_METHODS} /></div>}
+      {f.pay_mode === 'later' && <p className="hint">The room is reserved. Take the payment at the desk when the guest arrives (open the booking and press “Cash received”). If nobody pays within 30 minutes after arrival, the room is released.</p>}
+      {f.pay_mode === 'online' && <p className="hint">The room is held while the guest pays by GCash, Maya or card. You will get a payment link to send.</p>}
+      <div className="totalcard"><div><b>Total</b><small>{from ? 'Arrives ' + dayTime(from) + ' · out by ' + outBy : 'Choose an arrival time'}</small></div><strong>{pick ? '₱' + Number(pick.price).toLocaleString('en-PH') : '—'}</strong></div>
     </FormModal>
   );
 }

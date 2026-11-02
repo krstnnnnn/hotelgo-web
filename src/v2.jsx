@@ -18,7 +18,7 @@ export const SearchBox = ({ value, onChange, placeholder }) => (
   <label className="search"><Icon n="availability" size={16} /><input placeholder={placeholder} aria-label={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />{value && <button type="button" className="x" aria-label="Clear" onClick={() => onChange('')}>×</button>}</label>
 );
 export const Head = ({ title, sub, children }) => <header className="dash-head"><div><h1 className="page-title">{title}</h1>{sub && <p className="sub">{sub}</p>}</div><div className="tools">{children}</div></header>;
-export const Seg = ({ value, onChange, items }) => <div className="seg">{items.map(([v, l]) => <button key={v} className={value === v ? 'on' : ''} onClick={() => onChange(v)}>{l}</button>)}</div>;
+export const Seg = ({ value, onChange, items }) => <div className="seg">{items.map(([v, l]) => <button type="button" key={v} className={value === v ? 'on' : ''} onClick={() => onChange(v)}>{l}</button>)}</div>;
 
 /* the bell in the header: newest messages, a count of the ones not seen yet */
 const SEEN = 'hg_bell_seen';
