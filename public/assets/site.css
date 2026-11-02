@@ -242,3 +242,31 @@ section[id]{scroll-margin-top:72px}
 
 .pill.vip{background:#FFF1D6;color:#7A4B00;border:1px solid #E8C26A}.vipinc{margin:8px 0 0;padding:0;list-style:none;font-size:.85rem}.vipinc li:before{content:'✓ ';color:#0E7C86}
 .vipbox{border:1px solid #E8C26A;background:linear-gradient(#FFFBF0,#fff)}
+
+/* ===== sign-in pages: photo slider on the left, the form card on the right ===== */
+.aus{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);min-height:100vh;background:#E8EEF4}
+.aus-left{display:flex;flex-direction:column;background:var(--ink);color:#fff;min-width:0;position:sticky;top:0;height:100vh;align-self:start}
+.aus-top{padding:30px 44px 22px}.aus-top .logo{color:#fff}.aus-top .logo b{color:var(--amber)}
+.aus-photo{position:relative;flex:1;min-height:440px;overflow:hidden}
+.aus-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .9s ease}.aus-img.on{opacity:1}
+.aus-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,34,51,.55) 0%,rgba(11,34,51,.05) 38%,rgba(11,34,51,.72) 100%)}
+.aus-head{position:absolute;left:44px;right:44px;top:30px}.aus-eyebrow{display:block;font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#E6EEF2;margin-bottom:10px}
+.aus-head h2{font-size:clamp(2rem,3.5vw,3.1rem);line-height:1.05;color:#fff;max-width:520px;text-shadow:0 2px 18px rgba(0,0,0,.35)}.aus-head h2 em{font-style:normal;color:var(--amber)}
+.aus-cap{position:absolute;left:44px;right:120px;bottom:92px}.aus-pin{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#fff}
+.aus-cap h3{font-size:clamp(1.3rem,2.2vw,1.9rem);color:#fff;margin:8px 0 10px;text-shadow:0 2px 14px rgba(0,0,0,.4)}
+.aus-chips{display:flex;gap:8px;flex-wrap:wrap}.aus-chips span{background:rgba(255,255,255,.2);backdrop-filter:blur(6px);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#fff}
+.aus-dots{display:flex;gap:6px;margin-top:16px}.aus-dots button{width:8px;height:8px;padding:0;border:0;border-radius:99px;background:rgba(255,255,255,.55);cursor:pointer;transition:width .25s}.aus-dots button.on{width:30px;background:var(--amber)}
+.aus-arrows{position:absolute;right:44px;bottom:100px;display:flex;gap:10px}.aus-arrows button{width:38px;height:38px;border-radius:50%;border:1.5px solid rgba(255,255,255,.8);background:rgba(11,34,51,.35);color:#fff;font-size:22px;line-height:1;cursor:pointer}.aus-arrows button:hover{background:rgba(255,255,255,.25)}
+.aus-wave{position:absolute;left:0;right:0;bottom:0;width:100%;height:96px;display:block}
+.aus-right{display:flex;align-items:center;justify-content:center;padding:40px 28px;min-width:0}
+.aus-card{width:100%;max-width:430px;background:rgba(255,255,255,.86);border:1px solid rgba(255,255,255,.9);border-radius:26px;padding:38px 36px;box-shadow:0 24px 60px rgba(11,34,51,.10)}.aus-card.wide{max-width:500px}
+.aus-card h1{font-size:1.9rem;margin:0 0 4px}.aus-card .eyebrow{margin-bottom:6px}
+.aus-card .field label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute)}
+.aus-card input:not([type=checkbox]){height:50px;border-radius:14px;background:#fff}
+.aus-pass{position:relative}.aus-pass input{padding-right:48px}.aus-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;background:none;color:var(--mute);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:10px}.aus-eye:hover{color:var(--ink);background:var(--mist)}
+.aus-row{display:flex;align-items:center;justify-content:space-between;margin:4px 0 18px;font-size:14px;font-weight:600}.aus-check{display:flex;align-items:center;gap:8px;margin:0;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;text-transform:none;letter-spacing:0}.aus-check input{width:17px;height:17px;accent-color:var(--teal)}
+.aus-submit{min-height:50px;border-radius:14px;font-size:16px}
+.aus-or{display:flex;align-items:center;gap:14px;margin:20px 0;color:var(--mute);font-size:13px}.aus-or:before,.aus-or:after{content:"";flex:1;height:1px;background:#D3DEE5}
+.aus-google{display:flex;justify-content:center;min-height:44px}
+.aus-foot{margin-top:22px}
+@media(max-width:900px){.aus{grid-template-columns:1fr}.aus-left{display:none}.aus-right{min-height:100vh;padding:24px 16px;background:linear-gradient(180deg,#0B2233 0,#0B2233 140px,#E8EEF4 140px)}.aus-card{margin-top:36px}}

@@ -5,15 +5,24 @@ const RK = 'hg_refresh'; const RR = 'hg_role';
 let access = null;
 let refreshing = null;
 
+/* The refresh token and the role live in sessionStorage (gone when the tab closes), or in localStorage when the guest ticks "Remember me". */
+const safe = (fn, fallback = null) => { try { return fn(); } catch { return fallback; } };          // storage can be blocked (private mode)
+let keepAfterClose = safe(() => !!localStorage.getItem(RK), false);                                  // true = the sign-in is in localStorage
+const readKey = (k) => safe(() => sessionStorage.getItem(k)) || safe(() => localStorage.getItem(k));
+const writeKey = (k, v) => {
+  safe(() => { sessionStorage.removeItem(k); localStorage.removeItem(k); });
+  if (v) safe(() => (keepAfterClose ? localStorage : sessionStorage).setItem(k, v));
+};
+
 export const store = {
-  get refresh() { try { return sessionStorage.getItem(RK); } catch { return null; } },
-  set refresh(v) { try { v ? sessionStorage.setItem(RK, v) : sessionStorage.removeItem(RK); } catch { /* private mode */ } },
+  get refresh() { return readKey(RK); },
+  set refresh(v) { writeKey(RK, v); },
 };
 
 /* 'guest' (the website visitor) or 'staff' (front desk / owner): decides which "who am I" address restore() asks */
 export const role = {
-  get now() { try { return sessionStorage.getItem(RR); } catch { return null; } },
-  set now(v) { try { v ? sessionStorage.setItem(RR, v) : sessionStorage.removeItem(RR); } catch { /* private mode */ } },
+  get now() { return readKey(RR); },
+  set now(v) { writeKey(RR, v); },
 };
 
 export class ApiError extends Error {
@@ -55,14 +64,14 @@ export async function api(method, path, body) {
 }
 
 /* keep the tokens of a finished sign-in (staff or guest) and remember who is signed in */
-export function startSession(j, who) { access = j.tokens.access_token; store.refresh = j.tokens.refresh_token; role.now = who; return j.user; }
+export function startSession(j, who, remember = false) { keepAfterClose = !!remember; access = j.tokens.access_token; store.refresh = j.tokens.refresh_token; role.now = who; return j.user; }
 
 /* GUEST sign-in (the website). A guest who has not verified yet gets an ApiError with data.need_verify. */
-export async function guestSignIn(email, password) {
-  const res = await send('POST', '/guest/login', { email, password });
+export async function guestSignIn(identifier, password, remember = true) {
+  const res = await send('POST', '/guest/login', { identifier, password });
   const j = await readJson(res);
   if (!res.ok) throw new ApiError(j.error || 'Could not sign in.', res.status, j);
-  return startSession(j, 'guest');
+  return startSession(j, 'guest', remember);
 }
 
 /* download a file the API protects with the token (the calendar .ics) */

@@ -72,3 +72,5 @@ This one React project is the **whole website**; the API (`hotelgo`) has no page
 - **Guests:** landing, room search, register / verify / sign in / forgot password, checkout, pay, booking page (QR, calendar file, VIP requests), receipt, my bookings, change password, legal pages.
 - **Staff / owner:** the console at the hidden address `/#/<STAFF_PATH>`.
 - Build variables: `API_URL` (e.g. `https://hotelgo.onrender.com/api`) and `STAFF_PATH`. The API's `FRONTEND_URL` must be this site's address.
+
+- The sign-in page shows **Continue with Google** only when the API has `GOOGLE_CLIENT_ID` set. Add this site's address to the OAuth client's *Authorised JavaScript origins* in Google Cloud.

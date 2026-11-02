@@ -91,7 +91,7 @@ function guestPage(route, user, setUser) {
   const [page, a, b] = route;
   switch (page) {
     case 'login': return <GuestLogin onUser={setUser} />;
-    case 'register': return <GuestRegister />;
+    case 'register': return <GuestRegister onUser={setUser} />;
     case 'verify': return <GuestVerify onUser={setUser} />;
     case 'forgot': return <GuestForgot />;
     case 'reset': return <GuestReset />;
@@ -104,6 +104,7 @@ function guestPage(route, user, setUser) {
     default: return LEGAL.includes(page) ? <Legal page={page} /> : null;
   }
 }
+const AUTH_PAGES = ['login', 'register', 'verify', 'forgot', 'reset'];        // full-screen sign-in look (no site header)
 const GUEST_PAGES = ['login', 'register', 'verify', 'forgot', 'reset', 'book', 'pay', 'my-bookings', 'my-password', 'booking', 'receipt', ...LEGAL];
 
 function App() {
@@ -126,7 +127,7 @@ function App() {
   const guestView = GUEST_PAGES.includes(page) ? guestPage(route, user, setUser) : null;
   return (
     <SiteCtx.Provider value={{ user, onOut: out }}>
-      {page === 'search' ? <SearchPage /> : guestView ? <Layout>{guestView}</Layout> : <Landing />}
+      {page === 'search' ? <SearchPage /> : guestView ? (AUTH_PAGES.includes(page) ? guestView : <Layout>{guestView}</Layout>) : <Landing />}
     </SiteCtx.Provider>
   );
 }

@@ -5,6 +5,7 @@ import { api, ApiError, download, guestSignIn, startSession } from '../api';
 import { cfg, photoUrl } from './config';
 import { legalDocs } from './legal';
 import { Included, VipBadge } from '../ui';
+import { AuthShell, GoogleButton } from './AuthShell';
 
 /* ------------------------------------------------------------------ small helpers */
 export const go = (path) => { location.hash = '#/' + path.replace(/^[#/]+/, ''); };
@@ -67,40 +68,40 @@ export const Ico = ({ n, color = 'currentColor', size = 20 }) => (
 const Field = ({ id, label, help, children }) => <div className="field"><label htmlFor={id}>{label}</label>{children}{help && <div className="help">{help}</div>}</div>;
 
 /* ------------------------------------------------------------------ sign in, register, verify, forgot, reset */
+/* the white card on the right of the sign-in pages */
+const AuthCard = ({ children, wide }) => <div className={'aus-card' + (wide ? ' wide' : '')}>{children}</div>;
+const Eye = ({ on }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />{on && <path d="M4 4l16 16" />}</svg>;
+
 export function GuestLogin({ onUser }) {
-  const q = useQuery(); const [f, setF] = useState({ email: '', password: '' }); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const [show, setShow] = useState(false);
+  const q = useQuery(); const [f, setF] = useState({ identifier: '', password: '', remember: true }); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const [show, setShow] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const next = () => go(q.next ? decodeURIComponent(q.next) : 'my-bookings');
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr('');
-    try { onUser(await guestSignIn(f.email, f.password)); go(q.next ? decodeURIComponent(q.next) : 'my-bookings'); }
+    try { onUser(await guestSignIn(f.identifier, f.password, f.remember)); next(); }
     catch (x) {
-      if (x instanceof ApiError && x.data.need_verify) { flash('info', 'Please verify your account first. We sent you a code by email.'); go('verify?email=' + encodeURIComponent(f.email)); return; }
+      if (x instanceof ApiError && x.data.need_verify) { flash('info', 'Please verify your account first. We sent you a code by email.'); go('verify?email=' + encodeURIComponent(x.data.email || f.identifier)); return; }
       setErr(x.message); setBusy(false);
     }
   };
   return (
-    <div className="auth">
-      <div className="art"><span className="pill" style={{ background: '#14344A', color: '#F5A524' }}>Puerto Galera</span>
-        <h1>Your room, on your time.</h1>
-        <ul><li>✓ Live room availability and instant room assignment</li><li>✓ Secure online payment</li><li>✓ Manage or cancel your bookings</li></ul>
-        <div className="sun" aria-hidden="true" /><div className="wave" aria-hidden="true" /><div className="wave w2" aria-hidden="true" /><div className="wave w3" aria-hidden="true" /></div>
-      <div className="form"><div className="box">
-        <h1 style={{ fontSize: '2rem' }}>Welcome back</h1><p className="mute">Sign in to manage your bookings.</p>
-        <Notice /><Err text={err} />
-        <form onSubmit={submit} autoComplete="on">
-          <Field id="email" label="Email"><input id="email" type="email" required maxLength={150} autoComplete="username" value={f.email} onChange={set('email')} /></Field>
-          <Field id="password" label="Password"><input id="password" type={show ? 'text' : 'password'} required maxLength={72} autoComplete="current-password" value={f.password} onChange={set('password')} />
-            <button className="btn btn-sm btn-out" type="button" onClick={() => setShow(!show)} style={{ marginTop: 8 }}>Show / hide</button></Field>
-          <div className="row between" style={{ marginBottom: 18 }}><span /><a href="#/forgot">Forgot password?</a></div>
-          <button className="btn btn-block" type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
-        </form>
-        <p className="center small" style={{ marginTop: 20 }}>New to HOTELGO? <a href="#/register"><b>Create an account</b></a></p>
-      </div></div>
-    </div>
+    <AuthShell><AuthCard>
+      <h1>Welcome back</h1><p className="mute">Sign in to continue.</p>
+      <Notice /><Err text={err} />
+      <form onSubmit={submit} autoComplete="on">
+        <Field id="identifier" label="EMAIL OR MOBILE NUMBER"><input id="identifier" required maxLength={150} autoComplete="username" placeholder="Enter your email or mobile number" value={f.identifier} onChange={set('identifier')} /></Field>
+        <Field id="password" label="PASSWORD"><div className="aus-pass"><input id="password" type={show ? 'text' : 'password'} required maxLength={72} autoComplete="current-password" placeholder="Enter your password" value={f.password} onChange={set('password')} />
+          <button className="aus-eye" type="button" aria-label={show ? 'Hide password' : 'Show password'} onClick={() => setShow(!show)}><Eye on={show} /></button></div></Field>
+        <div className="aus-row"><label className="aus-check" htmlFor="remember"><input id="remember" type="checkbox" checked={f.remember} onChange={(e) => setF({ ...f, remember: e.target.checked })} /> Remember me</label><a href="#/forgot">Forgot password?</a></div>
+        <button className="btn btn-block aus-submit" type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+      </form>
+      <GoogleButton onUser={onUser} onDone={next} onError={setErr} />
+      <p className="center small aus-foot">Don't have an account? <a href="#/register"><b>Sign up</b></a></p>
+    </AuthCard></AuthShell>
   );
 }
 
-export function GuestRegister() {
+export function GuestRegister({ onUser }) {
   const [f, setF] = useState({ full_name: '', mobile: '', email: '', password: '', password2: '', agree: false }); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const submit = async (e) => {
@@ -109,8 +110,8 @@ export function GuestRegister() {
     catch (x) { setErr(x.message); setBusy(false); }
   };
   return (
-    <div className="container section"><div className="card" style={{ maxWidth: 520, margin: '0 auto' }}>
-      <div className="eyebrow">Step 1 of 2 · Your details</div><h1 style={{ fontSize: '2rem' }}>Create your account</h1><p className="mute">We will email you a 6-digit code to verify your email address.</p>
+    <AuthShell><AuthCard wide>
+      <div className="eyebrow">Step 1 of 2 · Your details</div><h1>Create your account</h1><p className="mute">We will email you a 6-digit code to verify your email address.</p>
       <Err text={err} />
       <form onSubmit={submit} autoComplete="on">
         <Field id="full_name" label="Full name"><input id="full_name" required maxLength={120} autoComplete="name" value={f.full_name} onChange={set('full_name')} /></Field>
@@ -121,8 +122,9 @@ export function GuestRegister() {
         <div className="check"><input id="agree" type="checkbox" required checked={f.agree} onChange={(e) => setF({ ...f, agree: e.target.checked })} /><label htmlFor="agree">I agree to the <a href="#/house-rules">house rules</a> and <a href="#/privacy">privacy notice</a>.</label></div>
         <button className="btn btn-block" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create account'}</button>
       </form>
-      <p className="center small" style={{ marginTop: 16 }}>Already have an account? <a href="#/login"><b>Sign in</b></a></p>
-    </div></div>
+      <GoogleButton onUser={onUser} onDone={() => go('my-bookings')} onError={setErr} />
+      <p className="center small aus-foot">Already have an account? <a href="#/login"><b>Sign in</b></a></p>
+    </AuthCard></AuthShell>
   );
 }
 
@@ -135,8 +137,8 @@ export function GuestVerify({ onUser }) {
   };
   const resend = async () => { setErr(''); try { const j = await api('POST', '/guest/verify/resend', { email }); setNote(j.message); } catch (x) { setErr(x.message); } };
   return (
-    <div className="container section"><div className="card" style={{ maxWidth: 460, margin: '0 auto' }}>
-      <div className="eyebrow">Step 2 of 2</div><h1 style={{ fontSize: '2rem' }}>Verify your email</h1>
+    <AuthShell><AuthCard>
+      <div className="eyebrow">Step 2 of 2</div><h1>Verify your email</h1>
       <p className="mute">Enter the 6-digit code we sent to your <b>{maskEmail(email)}</b>. It expires in 10 minutes. (Check your spam folder too.)</p>
       <Notice />{note && <div className="flash info" role="status">{note}</div>}<Err text={err} />
       <form onSubmit={submit}>
@@ -144,7 +146,7 @@ export function GuestVerify({ onUser }) {
         <button className="btn btn-block" type="submit" disabled={busy}>{busy ? 'Checking…' : 'Verify and continue'}</button>
       </form>
       <button className="btn btn-out btn-block" type="button" style={{ marginTop: 12 }} onClick={resend}>Send a new code</button>
-    </div></div>
+    </AuthCard></AuthShell>
   );
 }
 
@@ -156,12 +158,12 @@ export function GuestForgot() {
     catch (x) { setErr(x.message); setBusy(false); }
   };
   return (
-    <div className="container section"><div className="card" style={{ maxWidth: 460, margin: '0 auto' }}>
-      <h1 style={{ fontSize: '2rem' }}>Forgot your password?</h1><p className="mute">Enter your account email. We will email you a 6-digit reset code.</p><Err text={err} />
+    <AuthShell><AuthCard>
+      <h1>Forgot your password?</h1><p className="mute">Enter your account email. We will email you a 6-digit reset code.</p><Err text={err} />
       <form onSubmit={submit}><Field id="email" label="Email"><input id="email" type="email" required maxLength={150} value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
         <button className="btn btn-block" type="submit" disabled={busy}>{busy ? 'Sending…' : 'Send reset code'}</button></form>
-      <p className="center small" style={{ marginTop: 16 }}><a href="#/login">← Back to sign in</a></p>
-    </div></div>
+      <p className="center small aus-foot"><a href="#/login">← Back to sign in</a></p>
+    </AuthCard></AuthShell>
   );
 }
 
@@ -173,15 +175,15 @@ export function GuestReset() {
     try { const j = await api('POST', '/guest/reset', { email, ...f }); flash('ok', j.message); go('login'); } catch (x) { setErr(x.message); setBusy(false); }
   };
   return (
-    <div className="container section"><div className="card" style={{ maxWidth: 460, margin: '0 auto' }}>
-      <h1 style={{ fontSize: '2rem' }}>Set a new password</h1><Notice /><Err text={err} />
+    <AuthShell><AuthCard>
+      <h1>Set a new password</h1><Notice /><Err text={err} />
       <form onSubmit={submit}>
         <Field id="code" label="6-digit code"><input id="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required autoComplete="one-time-code" value={f.code} onChange={set('code')} /></Field>
         <Field id="password" label="New password" help="8+ characters with letters and numbers."><input id="password" type="password" required minLength={8} maxLength={72} autoComplete="new-password" value={f.password} onChange={set('password')} /></Field>
         <Field id="password2" label="Confirm new password"><input id="password2" type="password" required maxLength={72} autoComplete="new-password" value={f.password2} onChange={set('password2')} /></Field>
         <button className="btn btn-block" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save password'}</button>
       </form>
-    </div></div>
+    </AuthCard></AuthShell>
   );
 }
 
@@ -434,6 +436,7 @@ export function BookingPage({ bookingRef }) {
           {Number(b.is_vip) === 1 && ok && <Requests bookingRef={b.booking_ref} d={d} reload={load} />}
         </div>
         <aside className="stack next"><h2 style={{ fontSize: '1.5rem' }}>What happens next</h2>
+          {d.sms && <div className="card"><div className="head"><span className="bubble"><Ico n="message" color="#fff" size={18} /></span><b>{d.sms.status === 'logged' ? 'SMS (not sent)' : 'SMS sent'}</b><span className={'pill ' + pillOf(d.sms.status)}>{d.sms.status}</span></div><div className="msgbox">{d.sms.message}</div></div>}
           {d.mail && <div className="card"><div className="head"><span className="bubble"><Ico n="mail" color="#fff" size={18} /></span><b>{d.mail.status === 'logged' ? 'Email (not sent)' : 'Email sent'}</b><span className={'pill ' + pillOf(d.mail.status)}>{d.mail.status}</span></div>
             <div className="msgbox"><b>{d.mail.subject}</b><br /><span className="mute small">To {d.mail.recipient} · Booking details and directions included</span></div></div>}
           {ok && <><div className="card"><div className="head"><span className="bubble amber"><Ico n="calendar" color="#0B2233" size={18} /></span><b>Add it to your calendar</b></div><p className="mute small">Saves the stay with a reminder 30 minutes before check-in.</p>
