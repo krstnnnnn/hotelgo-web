@@ -11,8 +11,6 @@ import Dashboard from './pages/Dashboard';
 import Bookings from './pages/Bookings';
 import { Guests, Notifications, Payments, Reports, RoomsRates, Settings } from './pages/Screens';
 import { Hotels } from './pages/Hotels';
-import { Photos } from './pages/Photos';
-import { Audit, Staff } from './pages/Owner';
 import { Bell } from './v2';
 import Requests from './pages/Requests';
 import Coupons from './pages/Coupons';
@@ -28,7 +26,7 @@ function useRoute() {
 const NAV = [
   ['dashboard', 'Dashboard', 'staff', 'dashboard'], ['bookings', 'Reservations', 'staff', 'bookings'], ['requests', 'Requests', 'staff', 'bell'], ['guests', 'Guests', 'staff', 'guests'], ['availability', 'Availability', 'staff', 'availability'],
   ['types', 'Room types', 'staff', 'types'], ['rooms', 'Rooms', 'staff', 'rooms'],
-  ['hotels', 'Hotels', 'admin', 'hotel'], ['payments', 'Payments', 'admin', 'payments'], ['coupons', 'Coupons', 'admin', 'bell'], ['notifications', 'Notifications', 'admin', 'notifications'], ['reports', 'Reports', 'admin', 'reports'], ['staff', 'Staff', 'admin', 'staff'], ['photos', 'Home photos', 'platform', 'photo'], ['settings', 'Settings', 'platform', 'settings'], ['audit', 'Audit log', 'admin', 'audit'],
+  ['hotels', 'Hotels', 'admin', 'hotel'], ['payments', 'Payments', 'admin', 'payments'], ['coupons', 'Coupons', 'admin', 'bell'], ['notifications', 'Notifications', 'admin', 'notifications'], ['reports', 'Reports', 'admin', 'reports'], ['settings', 'Settings', 'admin', 'settings'],
   ['account', 'My account', 'staff', 'account'],
 ];
 const initials = (n) => String(n || '?').split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
@@ -54,10 +52,11 @@ function Shell({ user, route, onOut }) {
       case 'payments': return admin ? <Payments user={user} /> : <NoAccess />;
       case 'notifications': return admin ? <Notifications /> : <NoAccess />;
       case 'reports': return admin ? <Reports user={user} /> : <NoAccess />;
-      case 'staff': return admin ? <Staff user={user} /> : <NoAccess />;
-      case 'photos': return platform ? <Photos /> : <NoAccess />;
-      case 'settings': return platform ? <Settings /> : <NoAccess />;
-      case 'audit': return admin ? <Audit user={user} /> : <NoAccess />;
+      case 'settings': return admin ? <Settings user={user} /> : <NoAccess />;
+      // old links: these pages now live inside Settings
+      case 'staff': return admin ? <Settings user={user} initialTab="Staff & roles" /> : <NoAccess />;
+      case 'photos': return platform ? <Settings user={user} initialTab="Hotels & photos" /> : <NoAccess />;
+      case 'audit': return admin ? <Settings user={user} initialTab="Audit log" /> : <NoAccess />;
       default: return <div className="card empty">Page not found.</div>;
     }
   };
@@ -85,7 +84,7 @@ function Shell({ user, route, onOut }) {
 }
 const NoAccess = () => <div className="card empty">Only the owner can open this page.</div>;
 
-const CONSOLE_PAGES = NAV.map((n) => n[0]);
+const CONSOLE_PAGES = [...NAV.map((n) => n[0]), 'staff', 'photos', 'audit'];      // these three old links open a tab inside Settings
 const LEGAL = ['terms', 'privacy', 'cancellation-policy', 'house-rules'];
 
 /* the guest part of the website: sign-in, booking, payment, my bookings, legal pages */

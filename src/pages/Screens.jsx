@@ -3,6 +3,8 @@ import { api } from '../api';
 import { photoUrl } from '../site/config';
 import { Confirm, Err, Field, FormModal, Loading, PhotoBox, useLoad, useToast, label, peso, stay, when } from '../ui';
 import { Chip, Head, PAY_STATUS, Seg, SearchBox, downloadCsv, initials, useDebounced } from '../v2';
+import { Audit, Staff } from './Owner';
+import { Photos } from './Photos';
 
 /* ===================================================== Guest records ===================================================== */
 export function Guests({ user }) {
@@ -320,16 +322,21 @@ const SERVICES = [
   ['Google Calendar', 'Every paid booking is added to the hotel\u2019s Google Calendar, updated when it changes and removed when it is cancelled. Guests also download a calendar file.', 'GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_CALENDAR_ID'],
 ];
 const RULE_FIELDS = [['booking_fee', 'Booking fee (₱)'], ['hold_minutes', 'Room hold (minutes)'], ['cancel_hours', 'Free cancellation until (hours before)'], ['overnight_start', 'Overnight starts (HH:MM)'], ['overnight_end', 'Overnight ends (HH:MM)'], ['daily_checkin', 'Per-day stay check-in (HH:MM)'], ['daily_checkout', 'Per-day stay check-out (HH:MM)'], ['max_stay_days', 'Longest stay (days)']];
-export function Settings() {
-  const [tab, setTab] = useState('Integrations'); const d = useLoad(() => api('GET', '/settings'), [], 'settings'); const toast = useToast();
+/* Settings: the platform owner gets every tab (rules, integrations, hotels and home photos, staff, audit log); a hotel owner gets their staff and audit log */
+export function Settings({ user = { platform: true, role: 'admin' }, initialTab = '' }) {
+  const platform = !!user.platform;
+  const TABS = platform ? ['Integrations', 'Booking rules', 'Hotels & photos', 'Staff & roles', 'Audit log'] : ['Staff & roles', 'Audit log'];
+  const [tab, setTab] = useState(TABS.includes(initialTab) ? initialTab : TABS[0]);
+  useEffect(() => { if (TABS.includes(initialTab)) setTab(initialTab); }, [initialTab]);     // an old link (#/photos, #/staff, #/audit) opens its tab
+  const d = useLoad(() => (platform ? api('GET', '/settings') : Promise.resolve({ data: null, integrations: [] })), [], platform ? 'settings' : 'settings-owner'); const toast = useToast();
   const [f, setF] = useState(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const v = f || (d.data && d.data.data);
   const save = async (e) => { e.preventDefault(); setBusy(true); setErr(''); try { const r = await api('PUT', '/settings', v); setF(r.data); toast('Settings saved.'); } catch (x) { setErr(x.message); } setBusy(false); };
   const ints = d.data ? d.data.integrations.map(([name, connected, note]) => ({ name, connected, note })) : [];     // the API sends [name, connected, note]
   return (
     <div className="v2">
-      <Head title="Settings" sub="Platform-wide rules and connections" />
+      <Head title="Settings" sub={platform ? 'Platform-wide rules, connections, staff and logs' : 'Your hotel’s staff and activity log'} />
       <div className="settings">
-        <nav className="card settings-nav">{['Integrations', 'Booking rules', 'Hotels & photos', 'Staff & roles', 'Audit log'].map((t) => <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t}</button>)}</nav>
+        <nav className="card settings-nav">{TABS.map((t) => <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t}</button>)}</nav>
         <div>
           <Loading state={d} />
           {tab === 'Integrations' && <>
@@ -338,9 +345,12 @@ export function Settings() {
               <section key={name} className="card svc"><span className="svc-no">{i + 1}</span><div><h3>{name} {s && <span className={'chip chip-' + (s.connected ? 'teal' : 'warn')}>{s.connected ? 'Connected' : 'Not connected'}</span>}</h3><p>{desc}</p>{s && <p style={{ marginTop: 6 }}>{s.note}</p>}<p className="mono" style={{ marginTop: 6 }}>{keys}</p></div></section>); })}</div>
           </>}
           {tab === 'Booking rules' && v && <form className="card panel form" onSubmit={save}><div className="panel-head"><h2>Booking rules</h2></div><Err text={err} /><div className="two">{RULE_FIELDS.map(([k, t]) => <label key={k}>{t}<input value={v[k] ?? ''} onChange={(e) => setF({ ...v, [k]: e.target.value })} required /></label>)}</div><button className="btn" disabled={busy}>{busy ? 'Saving…' : 'Save settings'}</button></form>}
-          {tab === 'Hotels & photos' && <div className="card panel"><p>Each hotel's name, address, map pin and photo are on the <a href="#/hotels">Hotels</a> page. The landing page pictures are on <a href="#/photos">Home photos</a>.</p></div>}
-          {tab === 'Staff & roles' && <div className="card panel"><p>Front-desk and owner accounts are managed on the <a href="#/staff">Staff</a> page.</p></div>}
-          {tab === 'Audit log' && <div className="card panel"><p>Every sign-in, payment and guest view is on the <a href="#/audit">Audit log</a>.</p></div>}
+          {tab === 'Hotels & photos' && <>
+            <div className="card panel"><p>Each hotel's name, address, map pin and photo are on the <a href="#/hotels">Hotels</a> page.</p></div>
+            <h2 style={{ fontSize: 18, margin: '18px 0 8px' }}>Home page pictures</h2><Photos />
+          </>}
+          {tab === 'Staff & roles' && <Staff user={user} />}
+          {tab === 'Audit log' && <Audit user={user} />}
         </div>
       </div>
     </div>
