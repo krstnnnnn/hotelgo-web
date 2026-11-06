@@ -9,8 +9,8 @@ const off = (c) => (c.kind === 'percent' ? Number(c.value) + '% off' + (Number(c
 const rules = (c) => [Number(c.first_booking_only) && 'First booking only', Number(c.min_spend) > 0 && 'Min. rate ' + peso(c.min_spend), (c.starts_on || c.ends_on) && 'Use ' + (c.starts_on ? 'from ' + day(c.starts_on) : '') + (c.ends_on ? ' until ' + day(c.ends_on) : ''), (c.stay_from || c.stay_to) && 'Stay ' + (c.stay_from ? day(c.stay_from) : '…') + ' – ' + (c.stay_to ? day(c.stay_to) : '…'), Number(c.per_user_limit) > 0 && Number(c.per_user_limit) + ' per guest'].filter(Boolean).join(' · ');
 
 export default function Coupons({ user }) {
-  const list = useLoad(() => api('GET', '/coupons'));
-  const hotels = useLoad(() => (user.platform ? api('GET', '/manage/hotels') : Promise.resolve({ data: [] })));
+  const list = useLoad(() => api('GET', '/coupons'), [], 'coupons');
+  const hotels = useLoad(() => (user.platform ? api('GET', '/manage/hotels') : Promise.resolve({ data: [] })), [], 'hotels');
   const [edit, setEdit] = useState(null); const [del, setDel] = useState(null); const toast = useToast();
   return (
     <>

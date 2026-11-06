@@ -3,6 +3,8 @@
 const BASE = String((window.HOTELGO_CONFIG && window.HOTELGO_CONFIG.apiUrl) || 'http://localhost:8000/api').replace(/\/+$/, '');
 const RK = 'hg_refresh'; const RR = 'hg_role';
 let access = null;
+/* the last answer of each list page, kept in memory: a page shows it at once and refreshes in the background */
+export const pageCache = new Map();
 let refreshing = null;
 
 /* The refresh token and the role live in sessionStorage (gone when the tab closes), or in localStorage when the guest ticks "Remember me". */
@@ -64,7 +66,7 @@ export async function api(method, path, body) {
 }
 
 /* keep the tokens of a finished sign-in (staff or guest) and remember who is signed in */
-export function startSession(j, who, remember = false) { keepAfterClose = !!remember; access = j.tokens.access_token; store.refresh = j.tokens.refresh_token; role.now = who; return j.user; }
+export function startSession(j, who, remember = false) { pageCache.clear(); keepAfterClose = !!remember; access = j.tokens.access_token; store.refresh = j.tokens.refresh_token; role.now = who; return j.user; }
 
 /* GUEST sign-in (the website). A guest who has not verified yet gets an ApiError with data.need_verify. */
 export async function guestSignIn(identifier, password, remember = true) {
@@ -97,6 +99,7 @@ export async function restore() {
 
 export async function signOut() {
   const t = store.refresh;
+  pageCache.clear();
   access = null; store.refresh = null; role.now = null;
   if (t) { try { await send('POST', '/auth/logout', { refresh_token: t }); } catch { /* offline: token expires by itself */ } }
 }

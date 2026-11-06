@@ -7,7 +7,7 @@ import { Chip, Head, PAY_STATUS, Seg, SearchBox, downloadCsv, initials, useDebou
 /* ===================================================== Guest records ===================================================== */
 export function Guests({ user }) {
   const [q, setQ] = useState(''); const dq = useDebounced(q); const [page, setPage] = useState(1); const [sel, setSel] = useState(null);
-  const list = useLoad(() => api('GET', '/guests?' + new URLSearchParams({ q: dq })), [dq]);
+  const list = useLoad(() => api('GET', '/guests?' + new URLSearchParams({ q: dq })), [dq], 'guests');
   useEffect(() => setPage(1), [dq]);
   const all = list.data ? list.data.data : []; const per = 10; const pages = Math.max(1, Math.ceil(all.length / per)); const rows = all.slice((page - 1) * per, page * per);
   const cur = sel && all.some((g) => g.id === sel) ? sel : rows[0] && rows[0].id;
@@ -76,8 +76,8 @@ function EditGuest({ g, onClose, onSaved }) {
 const blankType = { hotel_id: '', name: '', description: '', amenities: '', max_guests: 2, price_3h: '', price_6h: '', price_12h: '', price_overnight: '', price_daily: '', cleaning_buffer_min: 15, is_active: 1, is_vip: 0, included_services: '' };
 export function RoomsRates({ user, tab: first }) {
   const [tab, setTab] = useState(first || 'rooms'); const [typeId, setTypeId] = useState(null); const [addRoom, setAddRoom] = useState(false); const [newType, setNewType] = useState(false); const [delRoom, setDelRoom] = useState(null);
-  const rooms = useLoad(() => api('GET', '/rooms')); const types = useLoad(() => api('GET', '/types'));
-  const hotels = useLoad(() => (user.platform ? api('GET', '/manage/hotels') : Promise.resolve({ data: [] })));
+  const rooms = useLoad(() => api('GET', '/rooms'), [], 'rooms'); const types = useLoad(() => api('GET', '/types'), [], 'types');
+  const hotels = useLoad(() => (user.platform ? api('GET', '/manage/hotels') : Promise.resolve({ data: [] })), [], 'hotels');
   const toast = useToast(); const admin = user.role === 'admin';
   useEffect(() => setTab(first || 'rooms'), [first]);
   const R = rooms.data ? rooms.data.data : []; const T = types.data ? types.data.data : [];
@@ -172,7 +172,7 @@ function printReceipt(p) {
 }
 export function Payments({ user }) {
   const [status, setStatus] = useState(''); const [method, setMethod] = useState(''); const [day, setDay] = useState('today'); const [q, setQ] = useState(''); const dq = useDebounced(q).trim().toLowerCase(); const [sel, setSel] = useState(null); const [ref, setRef] = useState(null); const [delPay, setDelPay] = useState(null); const toast = useToast();
-  const list = useLoad(() => api('GET', '/payments')); const x = list.data;
+  const list = useLoad(() => api('GET', '/payments'), [], 'payments'); const x = list.data;
   const today = new Date().toISOString().slice(0, 10);
   const rows = x ? x.data.filter((p) => (!status || p.status === status) && (!method || p.method === method) && (day === 'all' || String(p.paid_at || p.created_at).slice(0, 10) === today) && (!dq || (p.txn_ref + p.booking_ref + p.guest_name).toLowerCase().includes(dq))) : [];
   const p = rows.find((r) => r.id === sel) || rows[0];
@@ -229,7 +229,7 @@ const RULES = [
 const SAMPLE = { guest: 'Maria Santos', ref: 'HG-7K3Q9X', room: '203', date: 'Sat 17 Oct 7:00 PM - 10:00 PM' };
 const fill = (t) => t.replace(/\{(\w+)\}/g, (m, k) => SAMPLE[k] || m);
 export function Notifications() {
-  const list = useLoad(() => api('GET', '/notifications')); const [tab, setTab] = useState('rules'); const [selId, setSelId] = useState('confirmed'); const [del, setDel] = useState(null); const [view, setView] = useState(null); const toast = useToast();
+  const list = useLoad(() => api('GET', '/notifications'), [], 'notifications'); const [tab, setTab] = useState('rules'); const [selId, setSelId] = useState('confirmed'); const [del, setDel] = useState(null); const [view, setView] = useState(null); const toast = useToast();
   const log = list.data ? list.data.data : []; const svc = list.data ? list.data.services : null; const rule = RULES.find((r) => r.id === selId);
   const Svc = ({ on, name }) => <span className={'chip chip-' + (on ? 'teal' : 'warn')}>{name} · {on ? 'Connected' : 'Off'}</span>;
   const table = (rows) => (
@@ -271,7 +271,7 @@ export function Reports({ user }) {
   const iso = (d) => d.toISOString().slice(0, 10);
   const [range, setRange] = useState('week'); const [tab, setTab] = useState('Overview');
   const span = { week: [6, 0], last_week: [13, 7], month: [29, 0] }[range]; const run = { from: iso(new Date(Date.now() - span[0] * 86400000)), to: iso(new Date(Date.now() - span[1] * 86400000)) };
-  const d = useLoad(() => api('GET', '/reports?' + new URLSearchParams(run)), [range]); const x = d.data;
+  const d = useLoad(() => api('GET', '/reports?' + new URLSearchParams(run)), [range], 'reports'); const x = d.data;
   const series = x ? Object.entries(x.byDay).map(([date, v]) => ({ date, day: date.slice(5), hourly: v.hourly, overnight: v.overnight })) : [];
   const max = Math.max(1, ...series.map((s) => s.hourly + s.overnight)); const total = x ? x.total : 0; const hp = total && x ? Math.round((x.byStay.hourly / total) * 100) : 0;
   const maxType = x ? Math.max(1, ...Object.values(x.byType)) : 1; const up = x && x.prev_total > 0 ? Math.round(((total - x.prev_total) / x.prev_total) * 100) : null;
@@ -321,7 +321,7 @@ const SERVICES = [
 ];
 const RULE_FIELDS = [['booking_fee', 'Booking fee (₱)'], ['hold_minutes', 'Room hold (minutes)'], ['cancel_hours', 'Free cancellation until (hours before)'], ['overnight_start', 'Overnight starts (HH:MM)'], ['overnight_end', 'Overnight ends (HH:MM)'], ['daily_checkin', 'Per-day stay check-in (HH:MM)'], ['daily_checkout', 'Per-day stay check-out (HH:MM)'], ['max_stay_days', 'Longest stay (days)']];
 export function Settings() {
-  const [tab, setTab] = useState('Integrations'); const d = useLoad(() => api('GET', '/settings')); const toast = useToast();
+  const [tab, setTab] = useState('Integrations'); const d = useLoad(() => api('GET', '/settings'), [], 'settings'); const toast = useToast();
   const [f, setF] = useState(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const v = f || (d.data && d.data.data);
   const save = async (e) => { e.preventDefault(); setBusy(true); setErr(''); try { const r = await api('PUT', '/settings', v); setF(r.data); toast('Settings saved.'); } catch (x) { setErr(x.message); } setBusy(false); };
   const ints = d.data ? d.data.integrations.map(([name, connected, note]) => ({ name, connected, note })) : [];     // the API sends [name, connected, note]

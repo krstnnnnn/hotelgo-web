@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, pageCache } from './api';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 export const peso = (n) => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -12,15 +12,17 @@ export const stay = (b) => (b.stay_type === 'daily' ? b.hours / 24 + (b.hours ==
 
 export function Pill({ v, text }) { return <span className={'pill ' + v}>{text || label(v)}</span>; }
 
-/* run an async loader; gives data / error / loading and a reload() */
-export function useLoad(fn, deps = []) {
-  const [state, set] = useState({ data: null, error: '', loading: true });
+/* run an async loader; gives data / error / loading and a reload().
+   key (optional): the page keeps its last answer, so going back to it shows the list at once while the new one loads. */
+export function useLoad(fn, deps = [], key = '') {
+  const ck = key ? key + '|' + JSON.stringify(deps) : '';
+  const [state, set] = useState(() => (ck && pageCache.has(ck) ? { data: pageCache.get(ck), error: '', loading: false } : { data: null, error: '', loading: true }));
   const [n, setN] = useState(0);
   const fnRef = useRef(fn); fnRef.current = fn;
   useEffect(() => {
     let alive = true;
-    set((s) => ({ ...s, loading: true, error: '' }));
-    fnRef.current().then((data) => alive && set({ data, error: '', loading: false }), (e) => alive && set({ data: null, error: e.message, loading: false }));
+    set((s) => (ck && pageCache.has(ck) ? { data: pageCache.get(ck), error: '', loading: false } : { ...s, loading: true, error: '' }));
+    fnRef.current().then((data) => { if (ck) pageCache.set(ck, data); if (alive) set({ data, error: '', loading: false }); }, (e) => alive && set({ data: null, error: e.message, loading: false }));
     return () => { alive = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, n]);

@@ -65,7 +65,7 @@ export function BookingRequests({ bookingRef, list, online, onChange }) {
 /* the Requests page */
 export default function Requests() {
   const [tab, setTab] = useState('open');
-  const list = useLoad(() => api('GET', '/requests?status=' + tab), [tab]);
+  const list = useLoad(() => api('GET', '/requests?status=' + tab), [tab], 'requests');
   useEffect(() => { const t = setInterval(list.reload, 20000); return () => clearInterval(t); }, [list.reload]);
   const rows = list.data ? list.data.data : []; const c = list.data ? list.data.counts : {}; const online = !!(list.data && list.data.online);
   return (

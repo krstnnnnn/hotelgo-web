@@ -5,7 +5,7 @@ import { photoUrl } from '../site/config';
 
 /* Platform admin: the real pictures on the HOTELGO home page (top picture, banners, gallery). */
 export function Photos() {
-  const list = useLoad(() => api('GET', '/photos'));
+  const list = useLoad(() => api('GET', '/photos'), [], 'photos');
   const [mine, setMine] = useState({});
   const d = list.data;
   return (

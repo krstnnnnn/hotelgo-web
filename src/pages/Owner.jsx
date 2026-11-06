@@ -3,7 +3,7 @@ import { api } from '../api';
 import { Confirm, Field, FormModal, Loading, Modal, Pill, Table, Top, useLoad, useToast, when } from '../ui';
 
 export function Staff({ user }) {
-  const list = useLoad(() => api('GET', '/staff'));
+  const list = useLoad(() => api('GET', '/staff'), [], 'staff');
   const [edit, setEdit] = useState(null); const [del, setDel] = useState(null); const [made, setMade] = useState(null); const toast = useToast();
   return (
     <>
@@ -28,7 +28,7 @@ export function Staff({ user }) {
 }
 
 function StaffForm({ u, user, onClose, onSaved }) {
-  const hotels = useLoad(() => (user.platform ? api('GET', '/manage/hotels') : Promise.resolve({ data: [] })));
+  const hotels = useLoad(() => (user.platform ? api('GET', '/manage/hotels') : Promise.resolve({ data: [] })), [], 'hotels');
   const [f, setF] = useState({ full_name: u.full_name || '', email: u.email || '', mobile: u.mobile || '', hotel_id: '', role: 'staff' });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const save = async () => {
@@ -49,7 +49,7 @@ function StaffForm({ u, user, onClose, onSaved }) {
 }
 
 export function Audit({ user }) {
-  const d = useLoad(() => api('GET', '/audit'));
+  const d = useLoad(() => api('GET', '/audit'), [], 'audit');
   const [clear, setClear] = useState(false); const toast = useToast();
   return (
     <>

@@ -8,7 +8,7 @@ const blank = { name: '', area: 'Sabang', address: '', description: '', lat: 13.
 
 /* Platform admin: every hotel on HOTELGO. Hotel owner: only their own hotel profile. */
 export function Hotels({ user }) {
-  const list = useLoad(() => api('GET', '/manage/hotels'));
+  const list = useLoad(() => api('GET', '/manage/hotels'), [], 'manage-hotels');
   const [edit, setEdit] = useState(null); const [del, setDel] = useState(null); const toast = useToast();
   const platform = !!user.platform;
   return (

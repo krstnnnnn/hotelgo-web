@@ -70,7 +70,7 @@ function HotelInfo({ name, rooms, stats }) {
 }
 
 export default function Dashboard({ user, onBadges }) {
-  const d = useLoad(() => api('GET', '/dashboard'));
+  const d = useLoad(() => api('GET', '/dashboard'), [], 'dashboard');
   const [hid, setHid] = useState(saved);
   useEffect(() => { const t = setInterval(d.reload, 30000); return () => clearInterval(t); }, [d.reload]);
   useEffect(() => { if (d.data && onBadges) onBadges(d.data.badges || {}); }, [d.data]);      // eslint-disable-line

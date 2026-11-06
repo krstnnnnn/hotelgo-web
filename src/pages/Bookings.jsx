@@ -40,7 +40,7 @@ export default function Bookings({ user, refParam }) {
   const [stayF, setStayF] = useState(''); const [status, setStatus] = useState(''); const [day, setDay] = useState('today'); const [hotel, setHotel] = useState(''); const [q, setQ] = useState('');
   const dq = useDebounced(q).trim(); const [shift, setShift] = useState(0);
   const [walkin, setWalkin] = useState(refParam === 'new');            // #/bookings/new (from the dashboard button) opens the walk-in form
-  const list = useLoad(() => api('GET', '/bookings?' + new URLSearchParams({ status, q: dq, stay: stayF, day: dq ? 'all' : day, hotel_id: hotel })), [status, dq, stayF, day, hotel]);
+  const list = useLoad(() => api('GET', '/bookings?' + new URLSearchParams({ status, q: dq, stay: stayF, day: dq ? 'all' : day, hotel_id: hotel })), [status, dq, stayF, day, hotel], 'bookings');
   const hotels = useLoad(() => (user.platform ? api('GET', '/manage/hotels') : Promise.resolve({ data: [] })));
   useEffect(() => { const t = setInterval(list.reload, 30000); return () => clearInterval(t); }, [list.reload]);
   useEffect(() => setShift(0), [day]);
@@ -98,7 +98,7 @@ const clock = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2
 const clock12 = (t) => { const [h, m] = String(t).split(':').map(Number); return clock(new Date(2000, 0, 1, h, m)); };
 
 function Walkin({ onClose, onDone }) {
-  const types = useLoad(() => api('GET', '/room-types'));
+  const types = useLoad(() => api('GET', '/room-types'), [], 'room-types');
   const toast = useToast();
   const all = types.data?.data || [];
   const night = types.data?.overnight || { start: '20:00', end: '12:00' };
