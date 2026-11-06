@@ -37,6 +37,7 @@ export function RequestActions({ r, online, onChange }) {
         <button className="btn small amber" disabled={busy} onClick={() => pay('cash')}>Cash received</button>
         {online && <><button className="btn small ghost" disabled={busy} onClick={() => pay('link')}>Payment link</button><button className="btn small ghost" disabled={busy} onClick={() => pay('check')}>Check payment</button></>}
       </>}
+      {!r.paid_at && <button className="btn small ghost danger" disabled={busy} onClick={() => window.confirm('Delete the request "' + r.service + '"?') && run(async () => { const x = await api('DELETE', '/requests/' + r.id); toast(x.message); })}>Delete</button>}
       {ask && <AskModal r={r} ask={ask} onClose={() => setAsk(null)} onDone={(m) => { toast(m); onChange(); }} />}
     </div>
   );

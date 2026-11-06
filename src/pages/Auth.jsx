@@ -109,10 +109,11 @@ export function Availability({ signedIn }) {
   const rows = res.data ? res.data.data : [];
   const search = (
     <form className="pubsearch" onSubmit={(e) => { e.preventDefault(); setRun(q); }}>
-      <Field label="Stay"><select value={q.stay} onChange={set('stay')}><option value="hourly">Hourly</option><option value="overnight">Overnight</option></select></Field>
+      <Field label="Stay"><select value={q.stay} onChange={set('stay')}><option value="hourly">Hourly</option><option value="overnight">Overnight</option><option value="daily">Per day</option></select></Field>
       <Field label="Date"><input type="date" value={q.date} onChange={set('date')} min={new Date().toISOString().slice(0, 10)} /></Field>
       <Field label="Start time"><input type="time" value={q.time} onChange={set('time')} /></Field>
       {q.stay === 'hourly' && <Field label="Hours"><select value={q.hours} onChange={set('hours')}><option>3</option><option>6</option><option>12</option></select></Field>}
+      {q.stay === 'daily' && <Field label="Days"><input type="number" min="1" max="60" value={q.days || 1} onChange={set('days')} /></Field>}
       <Field label="Guests"><input type="number" min="1" max="10" value={q.guests} onChange={set('guests')} /></Field>
       <button className="btn">Search rooms</button>
     </form>
@@ -135,8 +136,8 @@ export function Availability({ signedIn }) {
             </div>
             <div className="buy">
               <div className="price">{peso(t.price)}</div>
-              <div className="muted small">{run.stay === 'overnight' ? 'overnight' : run.hours + ' hrs'}</div>
-              {t.free > 0 ? <a className="btn" href={'#/search?' + new URLSearchParams({ stay: run.stay, date: run.date, time: run.time, hours: run.hours, guests: run.guests, type: t.id })}>Select room</a>
+              <div className="muted small">{run.stay === 'overnight' ? 'overnight' : run.stay === 'daily' ? (run.days || 1) + ' day(s)' : run.hours + ' hrs'}</div>
+              {t.free > 0 ? <a className="btn" href={'#/search?' + new URLSearchParams({ stay: run.stay, date: run.date, time: run.time, hours: run.hours, ...(run.stay === 'daily' ? { days: run.days || 1 } : {}), guests: run.guests, type: t.id })}>Select room</a>
                 : <span className="muted small">Try another time</span>}
             </div>
           </div>

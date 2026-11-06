@@ -86,11 +86,13 @@ function SearchForm({ init, onGo, areas = [] }) {
       <div className="seg">
         <label><input type="radio" name="stay" value="hourly" checked={q.stay === 'hourly'} onChange={set('stay')} /> Hourly</label>
         <label><input type="radio" name="stay" value="overnight" checked={q.stay === 'overnight'} onChange={set('stay')} /> Overnight</label>
+        <label><input type="radio" name="stay" value="daily" checked={q.stay === 'daily'} onChange={set('stay')} /> Several days</label>
       </div>
       <div className="sf">
         <div><label htmlFor="date">Date</label><input type="date" id="date" required min={today()} max={plus(60)} value={q.date} onChange={set('date')} /></div>
         {q.stay === 'hourly' && <div><label htmlFor="time">Start time</label><select id="time" value={q.time} onChange={set('time')}>{times.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></div>}
         {q.stay === 'hourly' && <div><label htmlFor="hours">Duration</label><select id="hours" value={q.hours} onChange={set('hours')}>{[3, 6, 12].map((h) => <option key={h} value={h}>{h} hours</option>)}</select></div>}
+        {q.stay === 'daily' && <div><label htmlFor="days">How many days</label><input type="number" id="days" required min="1" max="60" step="1" value={q.days || 1} onChange={set('days')} /></div>}
         <div><label htmlFor="guests">Guests</label><select id="guests" value={q.guests} onChange={set('guests')}>{Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n} guest{n > 1 ? 's' : ''}</option>)}</select></div>
         <div><label htmlFor="area">Area</label><select id="area" value={q.area || ''} onChange={set('area')}><option value="">All of Puerto Galera</option>{areas.map((a) => <option key={a} value={a}>{a}</option>)}</select></div>
         <button className="btn btn-amber" type="submit">Check availability</button>
@@ -115,7 +117,8 @@ const usePhotos = () => {
 /* ---- room search results ---- */
 export function SearchPage() {
   const raw = new URLSearchParams(location.hash.split('?')[1] || '');
-  const p = { stay: raw.get('stay') === 'overnight' ? 'overnight' : 'hourly', date: raw.get('date') || slot().date, time: raw.get('time') || slot().time, hours: raw.get('hours') || '3', guests: raw.get('guests') || '2' };
+  const p = { stay: ['overnight', 'daily'].includes(raw.get('stay')) ? raw.get('stay') : 'hourly', date: raw.get('date') || slot().date, time: raw.get('time') || slot().time, hours: raw.get('hours') || '3', guests: raw.get('guests') || '2' };
+  if (p.stay === 'daily') p.days = raw.get('days') || '1';                    // a stay of several days: the guest chooses how many
   if (raw.get('area')) p.area = raw.get('area');
   if (raw.get('hotel')) p.hotel = raw.get('hotel');
   const key = JSON.stringify(p);
@@ -138,7 +141,7 @@ export function SearchPage() {
         {st.loading && <div className="card center">Looking for free rooms…</div>}
         {st.data && <>
           <h2>{rows.length} room type{rows.length === 1 ? '' : 's'} in {new Set(rows.map((r) => r.hotel_id)).size} hotel{new Set(rows.map((r) => r.hotel_id)).size === 1 ? '' : 's'} for {fmt(st.w.start)} – {fmt(st.w.end)}</h2>
-          <div className="flash info">You choose a room <b>type</b>. The exact room is <b>assigned automatically</b> and sent to you by SMS and email.</div>
+          <div className="flash info">You choose a room <b>type</b>. The exact room is <b>assigned automatically</b> and sent to you by email.</div>
           <div className="stack" style={{ marginTop: 20 }}>
             {rows.map((t, i) => (
               <div className={'result' + (t.free < 1 ? ' full' : '')} key={t.id}>{(t.image_id || t.hotel_image_id) ? <div className="scene photo"><img src={photoUrl(t.image_id || t.hotel_image_id)} alt={t.name} loading="lazy" /></div> : <div className={'scene t' + ((i % 3) + 1)}><i /></div>}
@@ -147,7 +150,7 @@ export function SearchPage() {
                   <p className="mute">{t.description}</p><Included t={t} />
                   <div className="chips">{String(t.amenities || '').split(',').map((a) => a.trim()).filter(Boolean).map((a) => <span className="chip" key={a}>{a}</span>)}<span className="chip">Up to {t.max_guests} guests</span></div>
                   <p className="small mute" style={{ margin: '10px 0 0' }}>Free cancellation until {cfg.site.cancelHours} hours before check-in</p></div>
-                <div className="buy"><div className="price">{peso(t.price)}</div><div className="small mute">{p.stay === 'overnight' ? 'overnight' : st.w.hours + ' hrs'} · fee added at checkout</div>
+                <div className="buy"><div className="price">{peso(t.price)}</div><div className="small mute">{p.stay === 'overnight' ? 'overnight' : p.stay === 'daily' ? p.days + (Number(p.days) === 1 ? ' day' : ' days') + ' · ' + peso(t.price_daily) + ' per day' : st.w.hours + ' hrs'} · fee added at checkout</div>
                   {t.free > 0 ? <a className="btn" style={{ marginTop: 12 }} href={'#/book?' + new URLSearchParams({ ...p, type: t.id })}>Select room</a> : <span className="small mute">Try another time</span>}</div></div>
             ))}
             {rows.length === 0 && <div className="card center">No room type fits that. Try fewer guests or another area.</div>}
@@ -160,7 +163,7 @@ export function SearchPage() {
 
 /* ---- landing page ---- */
 const OFFERS = [
-  ['Hourly or overnight', 'Book 3, 6 or 12 hours, or a full overnight stay. Pay only for the time you need.', 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z'],
+  ['Hours, nights or days', 'Book 3, 6 or 12 hours, a full overnight stay, or several days at a fixed price per day. Pay only for the time you need.', 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z'],
   ['Room assigned instantly', 'Pay online and a free room is assigned right away. No front-desk queue.', 'M5 12l4 4 10-10'],
   ['Secure online payment', 'GCash, Maya or card through PayMongo. Card details never touch our server.', 'M4 8h16v10H4zM4 11h16'],
   ['Ticket with QR code', 'Show the QR at the desk. Add it to your calendar and download the receipt.', 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2z'],
@@ -176,6 +179,8 @@ export function Landing() {
   const [types, setTypes] = useState(null);
   const hot = useHotels(); const hotels = hot ? hot.data : null;
   const ph = usePhotos(); const pic = (slot, fb) => (ph[slot] ? photoUrl(ph[slot]) : img(fb));
+  const [offers, setOffers] = useState([]);                    // current promo codes (new guest welcome, holiday sales ...)
+  useEffect(() => { api('GET', '/offers').then((j) => setOffers(j.data || []), () => {}); }, []);
   const [place, setPlace] = useState(0);
   const [box, setBox] = useState(-1);
   const [note, setNote] = useState({ t: 'This opens your email app with the message ready to send.', bad: false });
@@ -236,6 +241,14 @@ export function Landing() {
       </section>
 
       <section className="search" id="search"><div className="container"><div className="card reveal"><SearchForm onGo={goSearch} areas={hot ? hot.areas : []} /></div></div></section>
+
+      {offers.length > 0 && <section className="section lp-offers" id="offers"><div className="container"><div className="center"><div className="eyebrow reveal">Offers</div><h2 className="reveal">Save on your <em>next stay</em></h2></div>
+        <div className="grid g3 lp-offer-grid">{offers.slice(0, 6).map((o) => (
+          <div className="card flat lp-offer reveal" key={o.code}>
+            <b className="big">{o.kind === 'percent' ? o.value + '% off' : peso(o.value) + ' off'}</b><h3>{o.title}</h3>
+            <p className="small mute">{[o.first_booking_only ? 'For your first booking' : '', o.min_spend > 0 ? 'Room rate ' + peso(o.min_spend) + '+' : '', o.ends_on ? 'Book by ' + new Date(o.ends_on + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '', o.hotel_name || ''].filter(Boolean).join(' · ') || 'Any room, any time'}</p>
+            <div className="lp-code">Use code <code>{o.code}</code> at checkout</div>
+          </div>))}</div></div></section>}
 
       <section className="section lp-about" id="about"><div className="container grid g2 lp-center">
         <div className="lp-frame reveal"><img src={pic('about', 'g5.svg')} alt="A Puerto Galera beach" loading="lazy" /><span className="lp-badge"><b>24/7</b><small>online<br />booking</small></span></div>
@@ -353,6 +366,6 @@ function faq(c) {
     ['What is the booking fee?', `A small online booking fee of ${peso(c.bookingFee)} is added to the room rate. Walk-in guests who pay cash at the desk do not pay it.`],
     ['What do I need at check-in?', 'Show the QR code or reference number on your ticket and a valid ID. We store only the last 4 characters of the ID number.'],
     ['Is it safe to pay online?', 'Payments run through PayMongo hosted checkout (GCash, Maya, card). Your card or wallet details are never typed on our site.'],
-    ['I did not get my SMS or email. What now?', `Open My bookings after signing in: your ticket and room number are always there. You can also write to us at ${c.email}.`],
+    ['I did not get my email. What now?', `Open My bookings after signing in: your ticket and room number are always there. You can also write to us at ${c.email}.`],
   ];
 }

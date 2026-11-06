@@ -48,11 +48,13 @@ function StaffForm({ u, user, onClose, onSaved }) {
   );
 }
 
-export function Audit() {
+export function Audit({ user }) {
   const d = useLoad(() => api('GET', '/audit'));
+  const [clear, setClear] = useState(false); const toast = useToast();
   return (
     <>
-      <Top title="Audit log" sub="Who did what, newest first. Entries cannot be edited or deleted." />
+      <Top title="Audit log" sub="Who did what, newest first. Entries cannot be edited.">{user.platform && <button className="btn ghost danger" onClick={() => setClear(true)}>Clear entries older than 90 days</button>}</Top>
+      {clear && <Confirm title="Clear old log entries" yes="Clear" text="Delete every audit entry older than 90 days? This cannot be undone. The clean-up itself is written to the log." onClose={() => setClear(false)} onYes={async () => { const r = await api('DELETE', '/audit?days=90'); toast(r.message); d.reload(); }} />}
       <div className="card"><Loading state={d} />{d.data && <Table head={['When', 'Who', 'Action', 'Detail', 'IP']} empty="Nothing logged yet."
         rows={d.data.data.map((a) => <tr key={a.id}><td>{when(a.created_at)}</td><td>{a.full_name || '—'}</td><td>{a.action}</td><td className="muted">{a.detail}</td><td className="muted">{a.ip}</td></tr>)} />}</div>
     </>

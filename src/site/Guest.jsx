@@ -15,7 +15,7 @@ const fmtDt = (s) => {
   const d = toDate(s); if (isNaN(d)) return '';
   return d.toLocaleDateString('en-PH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) + ' · ' + d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
 };
-const stayLabel = (b) => (b.stay_type === 'overnight' ? 'Overnight' : 'Hourly · ' + Number(b.hours) + ' hrs');
+const stayLabel = (b) => (b.stay_type === 'daily' ? Number(b.hours) / 24 + (Number(b.hours) === 24 ? ' day' : ' days') : b.stay_type === 'overnight' ? 'Overnight' : 'Hourly · ' + Number(b.hours) + ' hrs');
 const payLabel = (m) => ({ ewallet: 'E-wallet', card: 'Card', bank: 'Bank / OTC', cash: 'Cash' }[m] || 'Online');
 const pillOf = (s) => ({ confirmed: 'ok', paid: 'ok', sent: 'ok', accepted: 'ok', done: 'ok', pending_payment: 'warn', new: 'warn', logged: 'warn', checked_in: 'info', declined: 'bad', failed: 'bad' }[s] || 'gray');
 const isoDate = (d) => { const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 10); };
@@ -216,14 +216,16 @@ export function Checkout({ user }) {
   const q = useQuery(); const [d, setD] = useState(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const [f, setF] = useState({ name: user.full_name || '', mobile: user.mobile || '', email: user.email || '', id_type: ID_TYPES[0], id_number: '', pay_method: 'ewallet', agree: false });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const [code, setCode] = useState(''); const [applied, setApplied] = useState(''); const [offers, setOffers] = useState([]);   // promo code: typed, applied (asked from the server), public offers to tap
+  useEffect(() => { api('GET', '/offers').then((j) => setOffers(j.data || []), () => {}); }, []);
   const key = JSON.stringify(q);
   useEffect(() => {
-    api('GET', '/guest/quote?' + new URLSearchParams(q)).then((j) => { setD(j); if (j.free < 1) setErr('Sorry, that room type is fully booked for your time.'); }, (e) => setErr(e.message));
+    api('GET', '/guest/quote?' + new URLSearchParams(applied ? { ...q, coupon: applied } : q)).then((j) => { setD(j); if (j.free < 1) setErr('Sorry, that room type is fully booked for your time.'); }, (e) => setErr(e.message));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, applied]);
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr('');
-    try { const j = await api('POST', '/guest/bookings', { ...q, ...f }); go('pay/' + j.booking_ref); } catch (x) { setErr(x.message); setBusy(false); }
+    try { const j = await api('POST', '/guest/bookings', { ...q, ...f, coupon: d.coupon && d.coupon.ok ? d.coupon.code : '' }); go('pay/' + j.booking_ref); } catch (x) { setErr(x.message); setBusy(false); }
   };
   if (!d) return <div className="container section"><Err text={err || ''} />{!err && <div className="card center mute">Loading…</div>}{err && <p><a href="#/search">← Search again</a></p>}</div>;
   const { type: t, window: w, search: p } = d; const first = String(user.full_name || '').split(' ')[0];
@@ -244,7 +246,17 @@ export function Checkout({ user }) {
               <Field id="id_type" label="Valid ID"><select id="id_type" required value={f.id_type} onChange={set('id_type')}>{ID_TYPES.map((x) => <option key={x}>{x}</option>)}</select></Field>
               <Field id="id_number" label="ID number" help={<>For your privacy we save only the <b>last 4 characters</b> of your ID number.</>}><input id="id_number" required maxLength={30} autoComplete="off" value={f.id_number} onChange={set('id_number')} /></Field>
             </div>
-            <div className="hint"><Ico n="bell" color="#4F6574" size={18} /><span>We will text and email your booking confirmation.</span></div></div>
+            <div className="hint"><Ico n="bell" color="#4F6574" size={18} /><span>We will email your booking confirmation.</span></div></div>
+          <div className="card"><div className="ctitle"><span className="ico"><Ico n="bell" color="#0E7C86" /></span><h3>Promo code</h3></div>
+            <div className="row" style={{ gap: 8 }}>
+              <input id="coupon" aria-label="Promo code" placeholder="Have a code? e.g. WELCOME10" maxLength={20} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+              <button className="btn" type="button" onClick={() => setApplied(code.trim())} disabled={!code.trim()}>Apply</button>
+              {applied && <button className="btn" type="button" onClick={() => { setApplied(''); setCode(''); }}>Remove</button>}
+            </div>
+            {d.coupon && d.coupon.ok && <div className="flash ok small" style={{ marginTop: 10 }}>Code <b>{d.coupon.code}</b> applied: {d.coupon.title}. You save <b>{peso(d.coupon.discount)}</b>.</div>}
+            {d.coupon && !d.coupon.ok && <div className="flash bad small" role="alert" style={{ marginTop: 10 }}>{d.coupon.message}</div>}
+            {offers.length > 0 && <div className="small mute" style={{ marginTop: 10 }}>Current offers: {offers.map((o) => <button key={o.code} type="button" className="chip" title={o.title} onClick={() => { setCode(o.code); setApplied(o.code); }} style={{ marginRight: 6 }}>{o.code} · {o.kind === 'percent' ? o.value + '% off' : peso(o.value) + ' off'}</button>)}</div>}
+          </div>
           <div className="card"><div className="ctitle"><span className="ico"><Ico n="card" color="#0E7C86" /></span><h3>Payment method</h3><span className="lockline"><Ico n="lock" color="#4F6574" size={15} />Encrypted &amp; secure</span></div>
             <div className="pay-grid" role="radiogroup" aria-label="Payment method">
               {METHODS.map(([k, ic, n, desc]) => (
@@ -260,10 +272,10 @@ export function Checkout({ user }) {
           {(t.image_id || t.hotel_image_id) ? <div className="scene photo" style={{ borderRadius: 16, marginBottom: 16 }}><img src={photoUrl(t.image_id || t.hotel_image_id)} alt={t.name} /></div> : <div className="scene t2" style={{ borderRadius: 16, marginBottom: 16 }}><i /></div>}
           <h3>{t.name} <VipBadge t={t} /></h3><p className="mute">{t.hotel_name} · {t.hotel_area || 'Puerto Galera'}</p><Included t={t} />
           <div className="stack small">
-            <div className="row between"><span className="mute">Stay</span><b>{p.stay === 'overnight' ? 'Overnight' : 'Hourly · ' + w.hours + ' hrs'}</b></div>
+            <div className="row between"><span className="mute">Stay</span><b>{stayLabel({ stay_type: p.stay, hours: w.hours })}</b></div>
             <div className="row between"><span className="mute">Check-in</span><b>{fmtDt(w.start)}</b></div><div className="row between"><span className="mute">Check-out</span><b>{fmtDt(w.end)}</b></div>
             <div className="row between"><span className="mute">Guests</span><b>{p.guests}</b></div><div className="row between"><span className="mute">Room</span><b style={{ color: 'var(--teal)' }}>Assigned after payment</b></div><hr />
-            <div className="row between"><span className="mute">Room rate</span><span>{peso(d.rate)}</span></div><div className="row between"><span className="mute">Online booking fee</span><span>{peso(d.fee)}</span></div>
+            <div className="row between"><span className="mute">Room rate</span><span>{peso(d.rate)}</span></div>{d.discount > 0 && <div className="row between"><span className="mute">Promo {d.coupon.code}</span><span style={{ color: 'var(--teal)' }}>− {peso(d.discount)}</span></div>}<div className="row between"><span className="mute">Online booking fee</span><span>{peso(d.fee)}</span></div>
             <div className="row between"><b>Total</b><span className="price">{peso(d.total)}</span></div></div>
           <div className="flash ok small">Free cancellation until {d.cancel_hours} hours before check-in.</div>
         </aside>
@@ -436,7 +448,6 @@ export function BookingPage({ bookingRef }) {
           {Number(b.is_vip) === 1 && ok && <Requests bookingRef={b.booking_ref} d={d} reload={load} />}
         </div>
         <aside className="stack next"><h2 style={{ fontSize: '1.5rem' }}>What happens next</h2>
-          {d.sms && <div className="card"><div className="head"><span className="bubble"><Ico n="message" color="#fff" size={18} /></span><b>{d.sms.status === 'logged' ? 'SMS (not sent)' : 'SMS sent'}</b><span className={'pill ' + pillOf(d.sms.status)}>{d.sms.status}</span></div><div className="msgbox">{d.sms.message}</div></div>}
           {d.mail && <div className="card"><div className="head"><span className="bubble"><Ico n="mail" color="#fff" size={18} /></span><b>{d.mail.status === 'logged' ? 'Email (not sent)' : 'Email sent'}</b><span className={'pill ' + pillOf(d.mail.status)}>{d.mail.status}</span></div>
             <div className="msgbox"><b>{d.mail.subject}</b><br /><span className="mute small">To {d.mail.recipient} · Booking details and directions included</span></div></div>}
           {ok && <><div className="card"><div className="head"><span className="bubble amber"><Ico n="calendar" color="#0B2233" size={18} /></span><b>Add it to your calendar</b></div><p className="mute small">Saves the stay with a reminder 30 minutes before check-in.</p>
@@ -491,7 +502,7 @@ export function Receipt({ bookingRef }) {
         <table><tbody>
           <tr><td>Booking reference</td><td>{b.booking_ref}</td></tr><tr><td>Guest</td><td>{b.guest_name}</td></tr><tr><td>Room</td><td>{b.room_no} · {b.type_name}</td></tr>
           <tr><td>Stay</td><td>{stayLabel(b)}</td></tr><tr><td>Check-in</td><td>{fmtDt(b.start_at)}</td></tr><tr><td>Check-out</td><td>{fmtDt(b.end_at)}</td></tr>
-          <tr><td>Room rate</td><td>{peso(b.room_rate)}</td></tr><tr><td>Online booking fee</td><td>{peso(b.booking_fee)}</td></tr><tr><td><b>Total</b></td><td>{peso(b.total)}</td></tr>
+          <tr><td>Room rate</td><td>{peso(b.room_rate)}</td></tr>{Number(b.discount) > 0 && <tr><td>Promo {b.coupon_code}</td><td>− {peso(b.discount)}</td></tr>}<tr><td>Online booking fee</td><td>{peso(b.booking_fee)}</td></tr><tr><td><b>Total</b></td><td>{peso(b.total)}</td></tr>
           {d.payments.map((p, i) => <tr key={p.id}><td>{i === 0 ? 'Payment' : 'Extra payment'}</td><td>{payLabel(p.method)} · {p.txn_ref} · {p.status} · {peso(p.amount)} · {fmtDt(p.paid_at)}</td></tr>)}
         </tbody></table>
         <p className="small mute" style={{ marginTop: 16 }}>Thank you for booking with HOTELGO. Show your booking reference and a valid ID at check-in.</p></div>

@@ -334,3 +334,5 @@ a.li:hover{background:var(--mist)}
 .totalcard b{font-size:16px}.totalcard small{display:block;opacity:.85;font-size:12.5px;margin-top:2px}.totalcard strong{font-size:28px;white-space:nowrap}
 @media(max-width:600px){.staycards{grid-template-columns:1fr 1fr}.totalcard strong{font-size:22px}}
 .modal .hint{font-size:12.5px;color:var(--mute);margin:8px 0 4px}
+button.chip{cursor:pointer;font-family:inherit}button.chip:hover{border-color:var(--teal);color:var(--teal)}
+.lp-offers{background:var(--mist)}.lp-offer-grid{margin-top:24px}.lp-offer .big{font-size:1.9rem;color:var(--teal);display:block}.lp-offer h3{margin:4px 0}.lp-code{margin-top:12px;padding:8px 12px;border:1px dashed var(--teal);border-radius:12px;font-size:13px;color:var(--mute)}.lp-code code{font-weight:800;color:var(--navy,#0B2233);letter-spacing:.06em}

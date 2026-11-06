@@ -73,7 +73,7 @@ function EditGuest({ g, onClose, onSaved }) {
 }
 
 /* ===================================================== Rooms & rates ===================================================== */
-const blankType = { hotel_id: '', name: '', description: '', amenities: '', max_guests: 2, price_3h: '', price_6h: '', price_12h: '', price_overnight: '', cleaning_buffer_min: 15, is_active: 1, is_vip: 0, included_services: '' };
+const blankType = { hotel_id: '', name: '', description: '', amenities: '', max_guests: 2, price_3h: '', price_6h: '', price_12h: '', price_overnight: '', price_daily: '', cleaning_buffer_min: 15, is_active: 1, is_vip: 0, included_services: '' };
 export function RoomsRates({ user, tab: first }) {
   const [tab, setTab] = useState(first || 'rooms'); const [typeId, setTypeId] = useState(null); const [addRoom, setAddRoom] = useState(false); const [newType, setNewType] = useState(false); const [delRoom, setDelRoom] = useState(null);
   const rooms = useLoad(() => api('GET', '/rooms')); const types = useLoad(() => api('GET', '/types'));
@@ -101,8 +101,8 @@ export function RoomsRates({ user, tab: first }) {
               <td onClick={(e) => e.stopPropagation()}>{admin ? <button className={'toggle' + (r.status === 'active' ? ' on' : '')} role="switch" aria-checked={r.status === 'active'} aria-label={'Room ' + r.room_no + ' bookable'} onClick={() => toggle(r)}><i /></button> : '—'}</td>{admin && <td onClick={(e) => e.stopPropagation()}><div className="row"><button className="btn small ghost" onClick={() => setAddRoom(r)}>Edit</button><button className="btn small danger" onClick={() => setDelRoom(r)}>Delete</button></div></td>}</tr>)}</tbody></table>}
           {tab === 'types' && <table className="tbl"><thead><tr><th></th>{user.platform && <th>HOTEL</th>}<th>TYPE</th><th>MAX GUESTS</th><th>BUFFER</th><th>ROOMS</th><th>VISIBLE</th></tr></thead><tbody>
             {T.map((t) => <tr key={t.id} className={'row-click' + (type && t.id === type.id ? ' on' : '')} onClick={() => setTypeId(t.id)}><td>{t.image_id ? <img className="thumb" src={photoUrl(t.image_id)} alt="" /> : null}</td>{user.platform && <td>{t.hotel_name}</td>}<td><b>{t.name}</b>{!!Number(t.is_vip) && <span className="chip chip-warn" style={{ marginLeft: 6 }}>VIP</span>}</td><td>{t.max_guests}</td><td>{t.cleaning_buffer_min} min</td><td>{count(t.id)}</td><td><span className={'chip chip-' + (Number(t.is_active) ? 'teal' : 'grey')}>{Number(t.is_active) ? 'Yes' : 'Hidden'}</span></td></tr>)}</tbody></table>}
-          {tab === 'rates' && <table className="tbl"><thead><tr><th>TYPE</th><th>3 HRS</th><th>6 HRS</th><th>12 HRS</th><th>OVERNIGHT</th></tr></thead><tbody>
-            {T.map((t) => <tr key={t.id} className={'row-click' + (type && t.id === type.id ? ' on' : '')} onClick={() => setTypeId(t.id)}><td><b>{t.name}</b>{user.platform && <small className="muted"> {t.hotel_name}</small>}</td><td>{peso(t.price_3h)}</td><td>{peso(t.price_6h)}</td><td>{peso(t.price_12h)}</td><td>{peso(t.price_overnight)}</td></tr>)}</tbody></table>}
+          {tab === 'rates' && <table className="tbl"><thead><tr><th>TYPE</th><th>3 HRS</th><th>6 HRS</th><th>12 HRS</th><th>OVERNIGHT</th><th>PER DAY</th></tr></thead><tbody>
+            {T.map((t) => <tr key={t.id} className={'row-click' + (type && t.id === type.id ? ' on' : '')} onClick={() => setTypeId(t.id)}><td><b>{t.name}</b>{user.platform && <small className="muted"> {t.hotel_name}</small>}</td><td>{peso(t.price_3h)}</td><td>{peso(t.price_6h)}</td><td>{peso(t.price_12h)}</td><td>{peso(t.price_overnight)}</td><td>{peso(t.price_daily)}</td></tr>)}</tbody></table>}
         </section>
         {type ? <TypePanel key={type.id} t={type} admin={admin} onSaved={types.reload} onDeleted={() => { setTypeId(null); types.reload(); rooms.reload(); }} /> : <aside className="card panel"><p className="muted">Select a room type.</p></aside>}
       </div>
@@ -125,7 +125,7 @@ function TypePanel({ t, admin, onSaved, onDeleted }) {
       <label>AMENITIES (COMMA SEPARATED)<input value={f.amenities || ''} onChange={set('amenities')} disabled={!admin} /></label>
       <div className="two"><label>MAX GUESTS<input type="number" min="1" max="20" value={f.max_guests} onChange={set('max_guests')} disabled={!admin} /></label><label>CLEANING BUFFER (MIN)<input type="number" min="0" max="180" value={f.cleaning_buffer_min} onChange={set('cleaning_buffer_min')} disabled={!admin} /></label></div>
       <div className="two"><label>3 HOURS (₱)<input type="number" min="0" step="0.01" value={f.price_3h} onChange={set('price_3h')} disabled={!admin} /></label><label>6 HOURS (₱)<input type="number" min="0" step="0.01" value={f.price_6h} onChange={set('price_6h')} disabled={!admin} /></label>
-        <label>12 HOURS (₱)<input type="number" min="0" step="0.01" value={f.price_12h} onChange={set('price_12h')} disabled={!admin} /></label><label>OVERNIGHT (₱)<input type="number" min="0" step="0.01" value={f.price_overnight} onChange={set('price_overnight')} disabled={!admin} /></label></div>
+        <label>12 HOURS (₱)<input type="number" min="0" step="0.01" value={f.price_12h} onChange={set('price_12h')} disabled={!admin} /></label><label>OVERNIGHT (₱)<input type="number" min="0" step="0.01" value={f.price_overnight} onChange={set('price_overnight')} disabled={!admin} /></label><label>PER DAY (₱)<input type="number" min="0" step="0.01" value={f.price_daily} onChange={set('price_daily')} placeholder="same as overnight" disabled={!admin} /></label></div>
       <label className="chk" style={{ textTransform: 'none', letterSpacing: 0 }}><input type="checkbox" checked={!!Number(f.is_vip)} onChange={(e) => setF({ ...f, is_vip: e.target.checked ? 1 : 0 })} disabled={!admin} /> VIP / luxury room (guests can send requests)</label>
       {!!Number(f.is_vip) && <label>INCLUDED SERVICES (ONE PER LINE, “TITLE: DETAILS”)<textarea rows="4" maxLength={1000} placeholder={'Welcome drinks: 2 cocktails\nBreakfast in bed: for 2'} value={f.included_services || ''} onChange={set('included_services')} disabled={!admin} /></label>}
       <label className="chk" style={{ textTransform: 'none', letterSpacing: 0 }}><input type="checkbox" checked={!!Number(f.is_active)} onChange={(e) => setF({ ...f, is_active: e.target.checked ? 1 : 0 })} disabled={!admin} /> Visible to guests</label>
@@ -145,7 +145,7 @@ function NewType({ hotels, onClose, onSaved }) {
       <Field label="Name"><input value={f.name} onChange={set('name')} required minLength={2} maxLength={80} /></Field>
       <div className="grid2"><Field label="Max guests"><input type="number" min="1" max="20" value={f.max_guests} onChange={set('max_guests')} required /></Field><Field label="Cleaning buffer (min)"><input type="number" min="0" max="180" value={f.cleaning_buffer_min} onChange={set('cleaning_buffer_min')} required /></Field>
         <Field label="3 hours (₱)"><input type="number" min="0" step="0.01" value={f.price_3h} onChange={set('price_3h')} required /></Field><Field label="6 hours (₱)"><input type="number" min="0" step="0.01" value={f.price_6h} onChange={set('price_6h')} required /></Field>
-        <Field label="12 hours (₱)"><input type="number" min="0" step="0.01" value={f.price_12h} onChange={set('price_12h')} required /></Field><Field label="Overnight (₱)"><input type="number" min="0" step="0.01" value={f.price_overnight} onChange={set('price_overnight')} required /></Field></div>
+        <Field label="12 hours (₱)"><input type="number" min="0" step="0.01" value={f.price_12h} onChange={set('price_12h')} required /></Field><Field label="Overnight (₱)"><input type="number" min="0" step="0.01" value={f.price_overnight} onChange={set('price_overnight')} required /></Field><Field label="Per day (₱)"><input type="number" min="0" step="0.01" value={f.price_daily} onChange={set('price_daily')} placeholder="same as overnight; 0 = no day stays" /></Field></div>
       <label className="chk"><input type="checkbox" checked={!!Number(f.is_vip)} onChange={(e) => setF({ ...f, is_vip: e.target.checked ? 1 : 0 })} /> VIP / luxury room</label>
       {!!Number(f.is_vip) && <Field label="Included services (one per line, “Title: details”)"><textarea rows="4" maxLength={1000} value={f.included_services} onChange={set('included_services')} /></Field>}
     </FormModal>
@@ -171,7 +171,7 @@ function printReceipt(p) {
   w.document.close(); w.focus(); w.print();
 }
 export function Payments({ user }) {
-  const [status, setStatus] = useState(''); const [method, setMethod] = useState(''); const [day, setDay] = useState('today'); const [q, setQ] = useState(''); const dq = useDebounced(q).trim().toLowerCase(); const [sel, setSel] = useState(null); const [ref, setRef] = useState(null); const toast = useToast();
+  const [status, setStatus] = useState(''); const [method, setMethod] = useState(''); const [day, setDay] = useState('today'); const [q, setQ] = useState(''); const dq = useDebounced(q).trim().toLowerCase(); const [sel, setSel] = useState(null); const [ref, setRef] = useState(null); const [delPay, setDelPay] = useState(null); const toast = useToast();
   const list = useLoad(() => api('GET', '/payments')); const x = list.data;
   const today = new Date().toISOString().slice(0, 10);
   const rows = x ? x.data.filter((p) => (!status || p.status === status) && (!method || p.method === method) && (day === 'all' || String(p.paid_at || p.created_at).slice(0, 10) === today) && (!dq || (p.txn_ref + p.booking_ref + p.guest_name).toLowerCase().includes(dq))) : [];
@@ -179,7 +179,7 @@ export function Payments({ user }) {
   const failed = x ? x.data.filter((r) => r.status === 'failed').length : 0;
   return (
     <div className="v2">
-      <Head title="Payments" sub="Online payment gateway (PayMongo) and desk cash. Records are kept for the books: refunded, never deleted.">
+      <Head title="Payments" sub="Online payment gateway (PayMongo) and desk cash. Paid records are kept for the books. A refunded record can be deleted.">
         <SearchBox value={q} onChange={setQ} placeholder="Search ref or transaction ID" />
         <button className="btn ghost" disabled={!x} onClick={() => downloadCsv('hotelgo-payments.csv', [['Txn', 'Booking', 'Guest', 'Method', 'Amount', 'Status', 'Paid'], ...rows.map((r) => [r.txn_ref, r.booking_ref, r.guest_name, r.method, r.amount, r.status, r.paid_at || ''])])}>Export CSV</button>
       </Head>
@@ -207,11 +207,13 @@ export function Payments({ user }) {
               <div className="row between" style={{ margin: '8px 0 14px' }}><span>Total</span><strong style={{ fontSize: 26, fontFamily: 'Sora' }}>{peso(p.amount)}</strong></div>
               <button className="btn navy btn-block" onClick={() => printReceipt(p)}>Print receipt</button>
               {user.role === 'admin' && ['paid', 'refund_pending'].includes(p.status) && <button className="btn ghost btn-block" onClick={() => setRef(p)}>Issue refund…</button>}
+              {user.role === 'admin' && p.status === 'refunded' && <button className="btn ghost danger btn-block" onClick={() => setDelPay(p)}>Delete record…</button>}
               <p className="hint">Refunds go back through the payment gateway and the booking is cancelled.</p>
             </aside>
           ) : <aside className="card panel"><p className="muted">Select a transaction.</p></aside>}
         </div>
       </>}
+      {delPay && <Confirm title="Delete payment record" text={'Delete the refunded payment ' + delPay.txn_ref + ' (' + peso(delPay.amount) + ')? This cannot be undone.'} onClose={() => setDelPay(null)} onYes={async () => { const r = await api('DELETE', '/payments/' + delPay.id); toast(r.message); setSel(null); list.reload(); }} />}
       {ref && <Confirm title="Refund payment" yes="Refund" text={'Refund ' + peso(ref.amount) + ' for booking ' + ref.booking_ref + '? The booking will be cancelled.'} onClose={() => setRef(null)} onYes={async () => { const r = await api('POST', '/payments/' + ref.id + '/refund'); toast(r.message); list.reload(); }} />}
     </div>
   );
@@ -219,10 +221,10 @@ export function Payments({ user }) {
 
 /* ====================================================== Notifications ====================================================== */
 const RULES = [
-  { id: 'confirmed', event: 'Booking confirmed', sms: true, email: true, timing: 'Instant', tpl: 'HOTELGO: Booking {ref} confirmed. Room {room}, {date}. Show this ref at check-in.' },
-  { id: 'cancelled', event: 'Booking cancelled', sms: true, email: true, timing: 'Instant', tpl: 'HOTELGO: Booking {ref} was cancelled. Any payment is being refunded, {guest}.' },
-  { id: 'changed', event: 'Booking changed', sms: true, email: true, timing: 'Instant', tpl: 'HOTELGO: Booking {ref} now starts {date}, room {room}.' },
-  { id: 'code', event: 'Sign-up / reset code', sms: false, email: true, timing: 'Instant', tpl: 'Your HOTELGO code is 123456. It expires in 10 minutes.' },
+  { id: 'confirmed', event: 'Booking confirmed', email: true, timing: 'Instant', tpl: 'Booking {ref} confirmed. Room {room}, {date}. Show this ref at check-in.' },
+  { id: 'cancelled', event: 'Booking cancelled', email: true, timing: 'Instant', tpl: 'Booking {ref} was cancelled. Any payment is being refunded, {guest}.' },
+  { id: 'changed', event: 'Booking changed', email: true, timing: 'Instant', tpl: 'Booking {ref} now starts {date}, room {room}.' },
+  { id: 'code', event: 'Sign-up / reset code', email: true, timing: 'Instant', tpl: 'Your HOTELGO code is 123456. It expires in 10 minutes.' },
 ];
 const SAMPLE = { guest: 'Maria Santos', ref: 'HG-7K3Q9X', room: '203', date: 'Sat 17 Oct 7:00 PM - 10:00 PM' };
 const fill = (t) => t.replace(/\{(\w+)\}/g, (m, k) => SAMPLE[k] || m);
@@ -233,20 +235,20 @@ export function Notifications() {
   const table = (rows) => (
     <table className="tbl"><thead><tr><th>WHEN</th><th>CHANNEL</th><th>TO</th><th>STATUS</th><th /></tr></thead><tbody>
       {rows.length === 0 && <tr><td colSpan="5" className="muted">Nothing sent yet.</td></tr>}
-      {rows.map((n) => <tr key={n.id}><td>{when(n.created_at)}</td><td><b>{n.channel === 'sms' ? 'SMS' : 'Email'}</b></td><td>{n.recipient}</td><td><span className={'chip chip-' + (n.status === 'sent' ? 'teal' : n.status === 'failed' ? 'bad' : 'grey')}>{n.status === 'failed' ? 'Failed' : label(n.status)}</span></td>
+      {rows.map((n) => <tr key={n.id}><td>{when(n.created_at)}</td><td><b>Email</b></td><td>{n.recipient}</td><td><span className={'chip chip-' + (n.status === 'sent' ? 'teal' : n.status === 'failed' ? 'bad' : 'grey')}>{n.status === 'failed' ? 'Failed' : label(n.status)}</span></td>
         <td><div className="row"><button className="btn small ghost" onClick={() => setView(n)}>Read</button>{n.status === 'failed' && <button className="btn small" onClick={async () => { try { const r = await api('POST', '/notifications/' + n.id + '/retry'); toast(r.message); list.reload(); } catch (e) { toast(e.message, 'bad'); } }}>Retry</button>}<button className="btn small danger" onClick={() => setDel(n)}>Delete</button></div></td></tr>)}</tbody></table>
   );
   return (
     <div className="v2">
-      <Head title="Notifications" sub="SMS and email sent automatically on booking events">{svc && <><Svc on={svc.sms} name="SMS service" /><Svc on={svc.email} name="Email service" /></>}</Head>
+      <Head title="Notifications" sub="Emails sent automatically on booking events">{svc && <Svc on={svc.email} name="Email service" />}</Head>
       <div className="toolbar"><Seg value={tab} onChange={setTab} items={[['rules', 'Automatic messages'], ['log', 'Delivery log']]} /></div>
       <Loading state={list} />
       <div className="split">
         <div>
           {tab === 'rules' ? <>
-            <section className="card panel"><table className="tbl"><thead><tr><th>EVENT</th><th>SMS</th><th>EMAIL</th><th>TIMING</th></tr></thead><tbody>
-              {RULES.map((r) => <tr key={r.id} className={'row-click' + (r.id === selId ? ' on' : '')} onClick={() => setSelId(r.id)}><td><b>{r.event}</b></td><td>{r.sms ? '✓' : '—'}</td><td>{r.email ? '✓' : '—'}</td><td>{r.timing}</td></tr>)}</tbody></table>
-              <p className="hint">These are the messages the system sends by itself. SMS and email are only really delivered when the services are connected (Settings).</p></section>
+            <section className="card panel"><table className="tbl"><thead><tr><th>EVENT</th><th>EMAIL</th><th>TIMING</th></tr></thead><tbody>
+              {RULES.map((r) => <tr key={r.id} className={'row-click' + (r.id === selId ? ' on' : '')} onClick={() => setSelId(r.id)}><td><b>{r.event}</b></td><td>{r.email ? '✓' : '—'}</td><td>{r.timing}</td></tr>)}</tbody></table>
+              <p className="hint">These are the messages the system sends by itself. Emails are only really delivered when the email service is connected (Settings).</p></section>
             <h2 style={{ margin: '20px 0 10px', fontSize: 17 }}>Recent delivery log</h2><section className="card panel scroll">{table(log.slice(0, 3))}</section>
           </> : <section className="card panel scroll">{table(log)}</section>}
         </div>
@@ -282,19 +284,19 @@ export function Reports({ user }) {
         <button className="btn ghost" onClick={() => window.print()}>Export PDF</button>
         <button className="btn" disabled={!x} onClick={() => downloadCsv('hotelgo-report-' + range + '.csv', [['Date', 'Hourly', 'Overnight', 'Total'], ...series.map((s) => [s.date, s.hourly, s.overnight, s.hourly + s.overnight])])}>Export CSV</button>
       </Head>
-      <div className="toolbar"><Seg value={tab} onChange={setTab} items={['Overview', 'Revenue', 'Occupancy', 'Hourly vs overnight'].map((t) => [t, t])} /></div>
+      <div className="toolbar"><Seg value={tab} onChange={setTab} items={['Overview', 'Revenue', 'Occupancy', 'Hourly vs overnight & days'].map((t) => [t, t])} /></div>
       <Loading state={d} />
       {x && <>
         <section className="stats2">
           <div className="card stat"><span className="sl">TOTAL REVENUE</span><strong>{peso(total)}</strong><small>{up === null ? 'No earlier period to compare' : (up >= 0 ? '↑ ' : '↓ ') + Math.abs(up) + '% vs previous period'}</small></div>
-          <div className="card stat"><span className="sl">PAID BOOKINGS</span><strong>{x.count}</strong><small>{peso(x.byStay.hourly)} hourly · {peso(x.byStay.overnight)} overnight</small></div>
+          <div className="card stat"><span className="sl">PAID BOOKINGS</span><strong>{x.count}</strong><small>{peso(x.byStay.hourly)} hourly · {peso(x.byStay.overnight)} overnight/days</small></div>
           <div className="card stat"><span className="sl">AVG. STAY (HOURLY)</span><strong>{x.avgHours} hrs</strong><small>Hourly bookings only</small></div>
         </section>
-        {show('Revenue', 'Hourly vs overnight') && (
+        {show('Revenue', 'Hourly vs overnight & days') && (
           <div className="report-grid">
             {show('Revenue') && <section className="card panel"><div className="panel-head"><h2>Revenue by day</h2><div className="legendc"><span><i style={{ background: 'var(--amber)' }} />Hourly</span><span><i style={{ background: 'var(--ink)' }} />Overnight</span></div></div>
               <div className="bars2">{series.map((s) => <div key={s.date} className="bar-col" title={s.day + ': ' + peso(s.hourly + s.overnight)}><div className="bar">{s.overnight > 0 && <span className="seg-o" style={{ height: (s.overnight / max) * 100 + '%' }} />}{s.hourly > 0 && <span className="seg-h" style={{ height: (s.hourly / max) * 100 + '%' }} />}</div>{series.length <= 14 ? s.day : ''}</div>)}</div></section>}
-            <section className="card panel"><div className="panel-head"><h2>Hourly vs overnight</h2></div>
+            <section className="card panel"><div className="panel-head"><h2>Hourly vs overnight &amp; days</h2></div>
               <Meter label="Hourly" value={hp + '%'} pct={hp} /><Meter label="Overnight" value={(total ? 100 - hp : 0) + '%'} pct={total ? 100 - hp : 0} navy />
               <h3 className="mini">By room type</h3>{Object.entries(x.byType).map(([k, v]) => <Meter key={k} label={k} value={peso(v)} pct={(v / maxType) * 100} />)}
               {user.platform && <><h3 className="mini">By hotel</h3>{Object.entries(x.byHotel || {}).map(([k, v]) => <Meter key={k} label={k} value={peso(v)} pct={(v / Math.max(1, ...Object.values(x.byHotel))) * 100} navy />)}</>}</section>
@@ -313,12 +315,11 @@ export function Reports({ user }) {
 /* ========================================================= Settings ========================================================= */
 const SERVICES = [
   ['Online payment gateway', 'Accepts e-wallet (GCash, Maya, GrabPay, ShopeePay), card and bank payments through PayMongo; handles refunds.', 'PAYMENT_PROVIDER, PAYMONGO_PUBLIC_KEY, PAYMONGO_SECRET_KEY'],
-  ['SMS notification service', 'Booking confirmations and OTP codes. Optional and paid.', 'SMS_PROVIDER, SMS_API_KEY'],
   ['Google Maps', 'Maps, hotel pins and directions (a free map is used without a key).', 'GOOGLE_MAPS_KEY'],
   ['Email notification service', 'Receipts, confirmations and sign-up codes.', 'EMAIL_PROVIDER, APPS_SCRIPT_URL'],
   ['Google Calendar', 'Every paid booking is added to the hotel\u2019s Google Calendar, updated when it changes and removed when it is cancelled. Guests also download a calendar file.', 'GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_CALENDAR_ID'],
 ];
-const RULE_FIELDS = [['booking_fee', 'Booking fee (₱)'], ['hold_minutes', 'Room hold (minutes)'], ['cancel_hours', 'Free cancellation until (hours before)'], ['overnight_start', 'Overnight starts (HH:MM)'], ['overnight_end', 'Overnight ends (HH:MM)']];
+const RULE_FIELDS = [['booking_fee', 'Booking fee (₱)'], ['hold_minutes', 'Room hold (minutes)'], ['cancel_hours', 'Free cancellation until (hours before)'], ['overnight_start', 'Overnight starts (HH:MM)'], ['overnight_end', 'Overnight ends (HH:MM)'], ['daily_checkin', 'Per-day stay check-in (HH:MM)'], ['daily_checkout', 'Per-day stay check-out (HH:MM)'], ['max_stay_days', 'Longest stay (days)']];
 export function Settings() {
   const [tab, setTab] = useState('Integrations'); const d = useLoad(() => api('GET', '/settings')); const toast = useToast();
   const [f, setF] = useState(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const v = f || (d.data && d.data.data);

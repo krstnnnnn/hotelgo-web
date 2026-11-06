@@ -8,7 +8,7 @@ export const when = (s) => {
   return isNaN(d) ? s : d.toLocaleString('en-PH', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 };
 export const label = (s) => String(s || '').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
-export const stay = (b) => (b.stay_type === 'overnight' ? 'Overnight' : b.hours + ' hours');
+export const stay = (b) => (b.stay_type === 'daily' ? b.hours / 24 + (b.hours === 24 ? ' day' : ' days') : b.stay_type === 'overnight' ? 'Overnight' : b.hours + ' hours');
 
 export function Pill({ v, text }) { return <span className={'pill ' + v}>{text || label(v)}</span>; }
 

@@ -55,10 +55,10 @@ export function Bell({ tick, admin }) {
             {reqs.slice(0, 5).map((r) => <li key={'r' + r.id}><div className="li-main"><b>New request · {r.service}</b><small>{r.guest_name} · Room {r.room_no || '—'} · {when(r.created_at)}</small></div><a href="#/requests" onClick={() => setOpen(false)}>Open</a></li>)}
             {log.length === 0 && reqs.length === 0 && <li className="muted">Nothing yet.</li>}
             {log.slice(0, 8).map((n) => (
-              <li key={n.id}><div className="li-main"><b>{n.channel === 'sms' ? 'SMS' : 'Email'} · {n.recipient}</b><small>{n.subject || 'Message'} · {when(n.created_at)}</small></div><span className={'chip chip-' + (n.status === 'sent' ? 'teal' : n.status === 'failed' ? 'bad' : 'grey')}>{label(n.status)}</span>{ts(n) > mark && <i className="bell-new" aria-label="New" />}</li>
+              <li key={n.id}><div className="li-main"><b>Email · {n.recipient}</b><small>{n.subject || 'Message'} · {when(n.created_at)}</small></div><span className={'chip chip-' + (n.status === 'sent' ? 'teal' : n.status === 'failed' ? 'bad' : 'grey')}>{label(n.status)}</span>{ts(n) > mark && <i className="bell-new" aria-label="New" />}</li>
             ))}
           </ul>
-          {svc && (!svc.sms || !svc.email) && <p className="hint">{!svc.sms && !svc.email ? 'SMS and email are' : !svc.sms ? 'SMS is' : 'Email is'} switched off: those messages are saved here, not sent.</p>}
+          {svc && !svc.email && <p className="hint">Email is switched off: those messages are saved here, not sent.</p>}
         </div>
       )}
     </div>

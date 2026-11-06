@@ -15,6 +15,7 @@ import { Photos } from './pages/Photos';
 import { Audit, Staff } from './pages/Owner';
 import { Bell } from './v2';
 import Requests from './pages/Requests';
+import Coupons from './pages/Coupons';
 
 /* tiny hash router: #/bookings/HG-ABC123 -> ['bookings', 'HG-ABC123'] */
 function useRoute() {
@@ -27,7 +28,7 @@ function useRoute() {
 const NAV = [
   ['dashboard', 'Dashboard', 'staff', 'dashboard'], ['bookings', 'Reservations', 'staff', 'bookings'], ['requests', 'Requests', 'staff', 'bell'], ['guests', 'Guests', 'staff', 'guests'], ['availability', 'Availability', 'staff', 'availability'],
   ['types', 'Room types', 'staff', 'types'], ['rooms', 'Rooms', 'staff', 'rooms'],
-  ['hotels', 'Hotels', 'admin', 'hotel'], ['payments', 'Payments', 'admin', 'payments'], ['notifications', 'Notifications', 'admin', 'notifications'], ['reports', 'Reports', 'admin', 'reports'], ['staff', 'Staff', 'admin', 'staff'], ['photos', 'Home photos', 'platform', 'photo'], ['settings', 'Settings', 'platform', 'settings'], ['audit', 'Audit log', 'admin', 'audit'],
+  ['hotels', 'Hotels', 'admin', 'hotel'], ['payments', 'Payments', 'admin', 'payments'], ['coupons', 'Coupons', 'admin', 'bell'], ['notifications', 'Notifications', 'admin', 'notifications'], ['reports', 'Reports', 'admin', 'reports'], ['staff', 'Staff', 'admin', 'staff'], ['photos', 'Home photos', 'platform', 'photo'], ['settings', 'Settings', 'platform', 'settings'], ['audit', 'Audit log', 'admin', 'audit'],
   ['account', 'My account', 'staff', 'account'],
 ];
 const initials = (n) => String(n || '?').split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
@@ -49,13 +50,14 @@ function Shell({ user, route, onOut }) {
       case 'rooms': return <RoomsRates user={user} tab="rooms" />;
       case 'account': return <ChangePassword />;
       case 'hotels': return admin ? <Hotels user={user} /> : <NoAccess />;
+      case 'coupons': return admin ? <Coupons user={user} /> : <NoAccess />;
       case 'payments': return admin ? <Payments user={user} /> : <NoAccess />;
       case 'notifications': return admin ? <Notifications /> : <NoAccess />;
       case 'reports': return admin ? <Reports user={user} /> : <NoAccess />;
       case 'staff': return admin ? <Staff user={user} /> : <NoAccess />;
       case 'photos': return platform ? <Photos /> : <NoAccess />;
       case 'settings': return platform ? <Settings /> : <NoAccess />;
-      case 'audit': return admin ? <Audit /> : <NoAccess />;
+      case 'audit': return admin ? <Audit user={user} /> : <NoAccess />;
       default: return <div className="card empty">Page not found.</div>;
     }
   };
