@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { photoUrl } from '../site/config';
-import { Confirm, Err, Field, FormModal, Loading, PhotoBox, useLoad, useToast, label, peso, stay, when } from '../ui';
+import { Confirm, Err, Field, FormModal, Loading, PhotoBox, shrink, useLoad, useToast, label, peso, stay, when } from '../ui';
 import { Chip, Head, PAY_STATUS, Seg, SearchBox, downloadCsv, initials, useDebounced } from '../v2';
 import { Audit, Staff } from './Owner';
 import { Photos } from './Photos';
@@ -114,6 +114,38 @@ export function RoomsRates({ user, tab: first }) {
     </div>
   );
 }
+/* the room photo gallery: several pictures for this room type (the main picture above is not listed here) */
+function GalleryEditor({ typeId, mainId, admin }) {
+  const [ids, setIds] = useState(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const load = () => api('GET', '/room-types/' + typeId + '/details').then((d) => setIds(d.photos || []), (e) => setErr(e.message));
+  useEffect(() => { load(); }, [typeId]);
+  const add = async (e) => {
+    const files = [...(e.target.files || [])]; e.target.value = '';
+    if (!files.length) return;
+    setBusy(true); setErr('');
+    try { for (const f of files) await api('POST', '/types/' + typeId + '/photos', { data: await shrink(f) }); }
+    catch (x) { setErr(x.message); }
+    finally { await load(); setBusy(false); }
+  };
+  const remove = async (id) => {
+    setBusy(true); setErr('');
+    try { await api('DELETE', '/types/' + typeId + '/photos/' + id); } catch (x) { setErr(x.message); }
+    finally { await load(); setBusy(false); }
+  };
+  return (
+    <div className="gallery-edit">
+      <span className="eyebrow">GALLERY · SHOWN UNDER “⋯ DETAILS” ON THE WEBSITE</span>
+      <Err text={err} />
+      {ids === null ? <p className="hint">Loading…</p> : <>
+        <div className="thumbs-edit">{ids.filter((id) => id !== mainId).map((id) => (
+          <div key={id} className="thumb-edit"><img src={photoUrl(id)} alt="" />{admin && <button type="button" className="btn ghost" onClick={() => remove(id)} disabled={busy}>Remove</button>}</div>))}</div>
+        {ids.filter((id) => id !== mainId).length === 0 && <p className="hint">No gallery pictures yet. The main picture above is shown first.</p>}
+      </>}
+      {admin && <label className="btn ghost" style={{ display: 'inline-block', cursor: 'pointer', marginTop: 8 }}>{busy ? 'Uploading…' : '+ Add pictures'}
+        <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={busy} onChange={add} /></label>}
+    </div>
+  );
+}
 function TypePanel({ t, admin, onSaved, onDeleted }) {
   const [f, setF] = useState(t); const [img, setImg] = useState(t.image_id || null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const [del, setDel] = useState(false); const toast = useToast();
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -134,6 +166,7 @@ function TypePanel({ t, admin, onSaved, onDeleted }) {
       <span className="eyebrow">PHOTO</span>
       {admin ? <PhotoBox kind="room_type" id={t.id} current={img} src={photoUrl(img)} onChange={(v) => { setImg(v); onSaved(); }} /> : <p className="hint">Only the owner can change the photo.</p>}
       {admin && <div className="btn-pair"><button className="btn" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button><button className="btn ghost" onClick={() => setF(t)} disabled={busy}>Cancel</button></div>}
+      <GalleryEditor typeId={t.id} mainId={img} admin={admin} />
       {admin && <button className="btn danger btn-block" onClick={() => setDel(true)}>Delete room type</button>}
       {del && <Confirm title={'Delete ' + t.name} text="A type that still has rooms or bookings cannot be deleted. Untick “Visible to guests” to hide it instead." onClose={() => setDel(false)} onYes={async () => { await api('DELETE', '/types/' + t.id); toast('Room type deleted.'); onDeleted(); }} />}
     </aside>

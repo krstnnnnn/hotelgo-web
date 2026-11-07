@@ -293,3 +293,30 @@ section[id]{scroll-margin-top:72px}
 .stars-input button{font-size:30px;line-height:1;background:none;border:0;color:#D5DEE3;cursor:pointer;padding:0 2px}
 .stars-input button.on{color:#F5A524}
 .rate-card textarea{width:100%;margin:6px 0 10px;border:1px solid #D5DEE3;border-radius:12px;padding:10px;font:inherit}
+
+/* ---- room card photo (heart on top, fixed height), Google Maps link, ⋯ details, details panel ---- */
+.result .photo-wrap{position:relative;align-self:start;height:270px;min-height:0;overflow:hidden}
+.result .photo-wrap .scene{height:100%;min-height:0;border-radius:0}
+.result .photo-wrap .fav{position:absolute;top:12px;right:12px;z-index:2}
+@media(max-width:760px){.result .photo-wrap{height:200px}}
+.maplink{display:inline-flex;align-items:center;gap:4px;color:var(--teal);font-size:.88rem;font-weight:600;margin:2px 0 6px;text-decoration:none}
+.maplink:hover{text-decoration:underline}
+.more-btn{margin-left:auto;width:36px;height:36px;border-radius:50%;border:1px solid #D5DEE3;background:#fff;color:#0B2233;font-size:20px;line-height:1;cursor:pointer;padding:0}
+.more-btn:hover{background:#F2F7F9}
+.modal-back{position:fixed;inset:0;background:rgba(11,34,51,.6);display:grid;place-items:center;z-index:200;padding:16px}
+.details{background:#fff;border-radius:20px;max-width:760px;width:100%;max-height:90vh;overflow:auto;padding:22px;position:relative}
+.modal-x{position:absolute;top:12px;right:12px;width:36px;height:36px;border-radius:50%;border:0;background:#F2F7F9;font-size:24px;line-height:1;cursor:pointer;z-index:3}
+.gallery{position:relative;height:340px;border-radius:14px;overflow:hidden;background:#EEF4F6}
+.gallery img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-empty{height:100%;display:grid;place-items:center;color:var(--mute)}
+.g-prev,.g-next{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.92);font-size:26px;line-height:1;cursor:pointer}
+.g-prev{left:12px}.g-next{right:12px}
+.g-count{position:absolute;left:12px;bottom:12px;background:rgba(11,34,51,.7);color:#fff;border-radius:999px;padding:3px 10px;font-size:.8rem}
+.thumbs{display:flex;gap:8px;margin:10px 0 0;overflow-x:auto}
+.thumbs button{width:84px;height:60px;flex:0 0 auto;border-radius:8px;overflow:hidden;border:2px solid transparent;padding:0;background:none;cursor:pointer}
+.thumbs button.on{border-color:var(--teal)}
+.thumbs img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-edit{margin:14px 0}
+.thumbs-edit{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+.thumb-edit{width:110px;display:grid;gap:4px}
+.thumb-edit img{width:110px;height:76px;object-fit:cover;border-radius:8px;display:block}

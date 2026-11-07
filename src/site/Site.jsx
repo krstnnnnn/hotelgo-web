@@ -1,5 +1,6 @@
 /* The public website: landing page + room search. Styled by assets/site.css (same design as the PHP site). */
 import { createContext, useContext, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api';
 import { cfg, photoUrl } from './config';
 import { Included, VipBadge } from '../ui';
@@ -118,9 +119,16 @@ const usePhotos = () => {
 /* the heart icon (save a hotel) */
 const HEART = 'M12 21s-7.5-4.6-9.6-9.1C.9 8.5 2.6 4.8 6.2 4.5c2-.2 3.4.9 4.3 2.2.9-1.3 2.3-2.4 4.3-2.2 3.6.3 5.3 4 3.8 7.4C19.5 16.4 12 21 12 21z';
 
-/* one room type in the results: photo and facts on the left, the price panel on the right (rating, someone booked, voucher, favourite) */
+/* the map pin icon */
+const PIN = 'M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12zm0-9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z';
+/* a Google Maps link for a hotel: the pin when we have its coordinates, otherwise a search by name */
+export const mapsUrl = (h) => (h.lat && h.lng)
+  ? 'https://www.google.com/maps/search/?api=1&query=' + h.lat + ',' + h.lng
+  : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent((h.name || '') + ' ' + (h.address || 'Puerto Galera'));
+
+/* one room type in the results: photo (heart on top), facts, and the price panel on the right */
 function RoomResult({ t, i, p, hours, fav, onFav }) {
-  const [open, setOpen] = useState(false); const [reviews, setReviews] = useState(null);
+  const [open, setOpen] = useState(false); const [reviews, setReviews] = useState(null); const [more, setMore] = useState(false);
   const r = t.rating || { count: 0, avg: null, label: 'New' };
   const v = t.voucher; const h = t.booked_hours_ago;
   const toggleReviews = async () => {
@@ -129,11 +137,20 @@ function RoomResult({ t, i, p, hours, fav, onFav }) {
     }
     setOpen(!open);
   };
+  const link = mapsUrl({ lat: t.hotel_lat, lng: t.hotel_lng, name: t.hotel_name, address: t.hotel_address });
   return (
-    <div className={'result' + (t.free < 1 ? ' full' : '')}>{(t.image_id || t.hotel_image_id) ? <div className="scene photo"><img src={photoUrl(t.image_id || t.hotel_image_id)} alt={t.name} loading="lazy" /></div> : <div className={'scene t' + ((i % 3) + 1)}><i /></div>}
-      <div className="body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>{t.hotel_name} · {t.hotel_area}</div>
+    <div className={'result' + (t.free < 1 ? ' full' : '')}>
+      <div className="photo-wrap">
+        {(t.image_id || t.hotel_image_id) ? <div className="scene photo"><img src={photoUrl(t.image_id || t.hotel_image_id)} alt={t.name} loading="lazy" /></div> : <div className={'scene t' + ((i % 3) + 1)}><i /></div>}
+        <button type="button" className={'fav' + (fav ? ' on' : '')} aria-pressed={fav} aria-label={fav ? 'Remove from saved hotels' : 'Save this hotel'} title={fav ? 'Saved' : 'Save this hotel'} onClick={() => onFav(Number(t.hotel_id))}>
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d={HEART} /></svg></button>
+      </div>
+      <div className="body">
+        <div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>{t.hotel_name} · {t.hotel_area}</div>
+        <a className="maplink" href={link} target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d={PIN} /></svg>{t.hotel_area}, Puerto Galera · Show on Google Maps</a>
         <div className="row"><h3 style={{ margin: 0 }}>{t.name}</h3><VipBadge t={t} />
-          {t.free < 1 ? <span className="pill gray">Fully booked</span> : t.free <= 2 ? <span className="pill warn">Only {t.free} left</span> : <span className="pill ok">{t.free} rooms free</span>}</div>
+          {t.free < 1 ? <span className="pill gray">Fully booked</span> : t.free <= 2 ? <span className="pill warn">Only {t.free} left</span> : <span className="pill ok">{t.free} rooms free</span>}
+          <button type="button" className="more-btn" aria-label="View details and photos" title="View details and photos" onClick={() => setMore(true)}>⋯</button></div>
         <div className="rate-line">{r.count > 0
           ? <><span className="rate-badge">{Number(r.avg).toFixed(1)}</span><b>{r.label}</b><span className="mute"> · {r.count} review{r.count === 1 ? '' : 's'}</span></>
           : <span className="mute">New on HOTELGO · no reviews yet</span>}
@@ -146,16 +163,56 @@ function RoomResult({ t, i, p, hours, fav, onFav }) {
           <div className="rv" key={k}><b>{'★'.repeat(x.rating)}{'☆'.repeat(5 - x.rating)}</b> <span className="small mute">{x.guest} · {String(x.created_at).slice(0, 10)}</span><p>{x.comment || 'Rated without a comment.'}</p></div>))}</div>}
       </div>
       <div className="buy">
-        <button type="button" className={'fav' + (fav ? ' on' : '')} aria-pressed={fav} aria-label={fav ? 'Remove from saved hotels' : 'Save this hotel'} title={fav ? 'Saved' : 'Save this hotel'} onClick={() => onFav(Number(t.hotel_id))}>
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d={HEART} /></svg></button>
         <div className="price">{v ? <><s className="was">{peso(t.price)}</s> {peso(v.final)}</> : peso(t.price)}</div>
         <div className="small mute">{p.stay === 'overnight' ? 'overnight' : p.stay === 'daily' ? p.days + (Number(p.days) === 1 ? ' day' : ' days') + ' · ' + peso(t.price_daily) + ' per day' : hours + ' hrs'} · fee added at checkout</div>
         {v && <div className="voucher">Voucher <b>{v.code}</b> applied · you save {peso(v.discount)}</div>}
         {t.free > 0 ? <a className="btn" style={{ marginTop: 12 }} href={'#/book?' + new URLSearchParams({ ...p, type: t.id })}>Select room</a> : <span className="small mute">Try another time</span>}
       </div>
+      {more && <RoomDetails typeId={t.id} onClose={() => setMore(false)} />}
     </div>
   );
 }
+
+/* the details panel (the ⋯ button): every picture of the room with arrows, the map, the room facts and the hotel's reviews */
+function RoomDetails({ typeId, onClose }) {
+  const [d, setD] = useState(null); const [err, setErr] = useState(''); const [i, setI] = useState(0);
+  useEffect(() => { api('GET', '/room-types/' + typeId + '/details').then(setD, (e) => setErr(e.message)); }, [typeId]);
+  useEffect(() => {
+    const key = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key);
+  }, [onClose]);
+  const photos = d ? d.photos : [];
+  const prev = () => setI((i - 1 + photos.length) % photos.length);
+  const next = () => setI((i + 1) % photos.length);
+  return createPortal(
+    <div className="modal-back" onClick={onClose} role="presentation">
+      <div className="details" role="dialog" aria-modal="true" aria-label="Room details" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="modal-x" onClick={onClose} aria-label="Close">×</button>
+        {err && <div className="flash bad">{err}</div>}
+        {!d && !err && <div className="center mute" style={{ padding: 40 }}>Loading…</div>}
+        {d && <>
+          <div className="gallery">
+            {photos.length ? <img src={photoUrl(photos[i])} alt={d.type.name + ' photo ' + (i + 1)} /> : <div className="gallery-empty">No photos yet</div>}
+            {photos.length > 1 && <><button type="button" className="g-prev" onClick={prev} aria-label="Previous photo">‹</button><button type="button" className="g-next" onClick={next} aria-label="Next photo">›</button><span className="g-count">{i + 1} / {photos.length}</span></>}
+          </div>
+          {photos.length > 1 && <div className="thumbs">{photos.map((pid, k) => (
+            <button type="button" key={pid} className={k === i ? 'on' : ''} onClick={() => setI(k)} aria-label={'Photo ' + (k + 1)}><img src={photoUrl(pid)} alt="" loading="lazy" /></button>))}</div>}
+          <h2 style={{ margin: '14px 0 2px' }}>{d.type.name}</h2>
+          <p className="mute" style={{ margin: 0 }}>{d.hotel.name} · {d.hotel.area}</p>
+          <a className="maplink" href={mapsUrl(d.hotel)} target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d={PIN} /></svg>{d.hotel.address || 'Open in Google Maps'} · Show on Google Maps</a>
+          <p style={{ marginTop: 10 }}>{d.type.description}</p>
+          <div className="chips">{String(d.type.amenities || '').split(',').map((a) => a.trim()).filter(Boolean).map((a) => <span className="chip" key={a}>{a}</span>)}<span className="chip">Up to {d.type.max_guests} guests</span></div>
+          <h3 style={{ margin: '18px 0 6px' }}>Guest reviews</h3>
+          <div className="rate-line">{d.rating.count > 0
+            ? <><span className="rate-badge">{Number(d.rating.avg).toFixed(1)}</span><b>{d.rating.label}</b><span className="mute"> · {d.rating.count} reviews</span></>
+            : <span className="mute">No reviews yet</span>}</div>
+          <div className="reviews">{d.reviews.map((x, k) => (
+            <div className="rv" key={k}><b>{'★'.repeat(x.rating)}{'☆'.repeat(5 - x.rating)}</b> <span className="small mute">{x.guest} · {String(x.created_at).slice(0, 10)}</span><p>{x.comment || 'Rated without a comment.'}</p></div>))}</div>
+        </>}
+      </div>
+    </div>, document.body);
+}
+
 export function SearchPage() {
   const raw = new URLSearchParams(location.hash.split('?')[1] || '');
   const p = { stay: ['overnight', 'daily'].includes(raw.get('stay')) ? raw.get('stay') : 'hourly', date: raw.get('date') || slot().date, time: raw.get('time') || slot().time, hours: raw.get('hours') || '3', guests: raw.get('guests') || '2' };
