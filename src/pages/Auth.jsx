@@ -126,8 +126,9 @@ export function Availability({ signedIn }) {
         {res.data && rows.length === 0 && <div className="card empty">No room type fits that many guests. Try fewer guests.</div>}
         {rows.map((t, i) => (
           <div className={'result' + (t.free < 1 ? ' full' : '')} key={t.id}>
-            <div className={'scene t' + ((i % 3) + 1)}><i /></div>
+            {(t.image_id || t.hotel_image_id) ? <div className="scene photo"><img src={photoUrl(t.image_id || t.hotel_image_id)} alt={t.name} loading="lazy" /></div> : <div className={'scene t' + ((i % 3) + 1)}><i /></div>}
             <div className="rbody">
+              {t.hotel_name && <div className="small muted" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 2 }}>{t.hotel_name}{t.hotel_area ? ' \u00B7 ' + t.hotel_area : ''}</div>}
               <div className="rtop"><h3>{t.name}</h3><VipBadge t={t} />
                 {t.free < 1 ? <span className="pill gray">Fully booked</span> : t.free <= 2 ? <span className="pill warn">Only {t.free} left</span> : <span className="pill ok">{t.free} rooms free</span>}</div>
               <p className="muted">{t.description}</p><Included t={t} />

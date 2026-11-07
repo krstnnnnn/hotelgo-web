@@ -302,6 +302,38 @@ export function Notifications() {
 const LEVELS = ['#e8eef2', '#bfe0e4', '#8bc7cd', '#2b9aa4', '#0e7c86', '#0a2239'];
 const DAYS = [['Sun', 0], ['Mon', 1], ['Tue', 2], ['Wed', 3], ['Thu', 4], ['Fri', 5], ['Sat', 6]];
 const Meter = ({ label: l, value, pct, navy }) => <div className="rmeter"><div><span>{l}</span><b>{value}</b></div><i><u className={navy ? 'navy' : ''} style={{ width: Math.max(2, pct) + '%' }} /></i></div>;
+const niceMax = (m) => { if (m <= 0) return 1000; const mag = Math.pow(10, Math.floor(Math.log10(m))), n = m / mag; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 4 ? 4 : n <= 5 ? 5 : 10) * mag; };
+const kfmt = (n) => (n === 0 ? '0' : '\u20B1' + (n >= 1000 ? +(n / 1000).toFixed(1) + 'k' : Math.round(n)));
+const dshort = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+function RevenueBars({ series }) {
+  const top = niceMax(Math.max(0, ...series.map((s) => s.hourly + s.overnight)));
+  const ticks = [0, 1, 2, 3, 4].map((k) => (top / 4) * k);
+  const step = series.length <= 14 ? 1 : Math.ceil(series.length / 8);
+  const few = series.length <= 14;
+  return (
+    <div className="rchart">
+      <div className="ry">{ticks.slice().reverse().map((t) => <span key={t}>{kfmt(t)}</span>)}</div>
+      <div className="rplot">
+        <div className="rgrid">{ticks.map((t) => <i key={t} style={{ bottom: (t / top) * 100 + '%' }} />)}</div>
+        <div className="rcols">
+          {series.map((s) => {
+            const tot = s.hourly + s.overnight;
+            return (
+              <div key={s.date} className="rcol" title={dshort(s.date) + ': ' + peso(tot) + ' (Hourly ' + peso(s.hourly) + ' \u00B7 Overnight ' + peso(s.overnight) + ')'}>
+                {tot > 0 ? <div className="rbar" style={{ height: (tot / top) * 100 + '%' }}>
+                  {s.overnight > 0 && <span className="seg-o" style={{ height: (s.overnight / tot) * 100 + '%' }} />}
+                  {s.hourly > 0 && <span className="seg-h" style={{ height: (s.hourly / tot) * 100 + '%' }} />}
+                </div> : <div className="rzero" />}
+                {tot > 0 && <em className={'rval' + (few ? ' always' : '')} style={{ bottom: 'calc(' + (tot / top) * 100 + '% + 4px)' }}>{kfmt(tot)}</em>}
+              </div>
+            );
+          })}
+        </div>
+        <div className="rx">{series.map((s, i) => <span key={s.date}>{i % step === 0 || i === series.length - 1 && series.length - 1 - (Math.floor((series.length - 1) / step) * step) >= step / 2 ? dshort(s.date) : ''}</span>)}</div>
+      </div>
+    </div>
+  );
+}
 export function Reports({ user }) {
   const iso = (d) => d.toISOString().slice(0, 10);
   const [range, setRange] = useState('week'); const [tab, setTab] = useState('Overview');
@@ -330,7 +362,7 @@ export function Reports({ user }) {
         {show('Revenue', 'Hourly vs overnight & days') && (
           <div className="report-grid">
             {show('Revenue') && <section className="card panel"><div className="panel-head"><h2>Revenue by day</h2><div className="legendc"><span><i style={{ background: 'var(--amber)' }} />Hourly</span><span><i style={{ background: 'var(--ink)' }} />Overnight</span></div></div>
-              <div className="bars2">{series.map((s) => <div key={s.date} className="bar-col" title={s.day + ': ' + peso(s.hourly + s.overnight)}><div className="bar">{s.overnight > 0 && <span className="seg-o" style={{ height: (s.overnight / max) * 100 + '%' }} />}{s.hourly > 0 && <span className="seg-h" style={{ height: (s.hourly / max) * 100 + '%' }} />}</div>{series.length <= 14 ? s.day : ''}</div>)}</div></section>}
+              <RevenueBars series={series} /></section>}
             <section className="card panel"><div className="panel-head"><h2>Hourly vs overnight &amp; days</h2></div>
               <Meter label="Hourly" value={hp + '%'} pct={hp} /><Meter label="Overnight" value={(total ? 100 - hp : 0) + '%'} pct={total ? 100 - hp : 0} navy />
               <h3 className="mini">By room type</h3>{Object.entries(x.byType).map(([k, v]) => <Meter key={k} label={k} value={peso(v)} pct={(v / maxType) * 100} />)}
@@ -368,7 +400,7 @@ export function Settings({ user = { platform: true, role: 'admin' }, initialTab 
   return (
     <div className="v2">
       <Head title="Settings" sub={platform ? 'Platform-wide rules, connections, staff and logs' : 'Your hotel’s staff and activity log'} />
-      <div className="settings">
+      <div className={'settings' + (tab === 'Staff & roles' || tab === 'Audit log' ? ' wide' : '')}>
         <nav className="card settings-nav">{TABS.map((t) => <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t}</button>)}</nav>
         <div>
           <Loading state={d} />

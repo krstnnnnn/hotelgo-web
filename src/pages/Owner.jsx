@@ -13,10 +13,10 @@ export function Staff({ user }) {
         {list.data && <Table head={['Name', 'Email', 'Mobile', ...(user.platform ? ['Hotel'] : []), 'Role', 'Active', 'Last sign-in', '']} empty="No staff."
           rows={list.data.data.map((u) => (
             <tr key={u.id}><td><b>{u.full_name}</b></td><td>{u.email}</td><td>{u.mobile}</td>{user.platform && <td>{u.hotel_name || 'All hotels'}</td>}<td>{u.role === 'admin' ? (u.hotel_id ? 'Hotel owner' : 'Platform admin') : 'Front desk'}</td><td><Pill v={Number(u.is_active) ? 'active' : 'off'} text={Number(u.is_active) ? 'Yes' : 'Disabled'} /></td><td>{when(u.last_login_at) || '—'}</td>
-              <td className="row">{(u.role === 'staff' || (u.role === 'admin' && u.hotel_id && user.platform)) && u.id !== user.id && <>
+              <td><div className="row nowrap">{(u.role === 'staff' || (u.role === 'admin' && u.hotel_id && user.platform)) && u.id !== user.id && <>
                 <button className="btn small" onClick={() => setEdit(u)}>Edit</button>
                 <button className="btn small ghost" onClick={async () => { try { await api('PUT', '/staff/' + u.id, { is_active: Number(u.is_active) ? 0 : 1 }); list.reload(); } catch (e) { toast(e.message, 'bad'); } }}>{Number(u.is_active) ? 'Disable' : 'Enable'}</button>
-                <button className="btn small danger" onClick={() => setDel(u)}>Delete</button></>}</td></tr>
+                <button className="btn small danger" onClick={() => setDel(u)}>Delete</button></>}</div></td></tr>
           ))} />}
       </div>
       {edit && <StaffForm u={edit} user={user} onClose={() => setEdit(null)} onSaved={(temp) => { list.reload(); if (temp) setMade(temp); }} />}

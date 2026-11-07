@@ -117,7 +117,7 @@ const usePhotos = () => {
 
 /* ---- room search results ---- */
 /* the heart icon (save a hotel) */
-const HEART = 'M12 21s-7.5-4.6-9.6-9.1C.9 8.5 2.6 4.8 6.2 4.5c2-.2 3.4.9 4.3 2.2.9-1.3 2.3-2.4 4.3-2.2 3.6.3 5.3 4 3.8 7.4C19.5 16.4 12 21 12 21z';
+const STAR = 'M12 2.8l2.8 5.9 6.4.9-4.7 4.5 1.2 6.4L12 17.4l-5.7 3.1 1.2-6.4L2.8 9.6l6.4-.9L12 2.8z';
 
 /* the map pin icon */
 const PIN = 'M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12zm0-9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z';
@@ -142,8 +142,9 @@ function RoomResult({ t, i, p, hours, fav, onFav }) {
     <div className={'result' + (t.free < 1 ? ' full' : '')}>
       <div className="photo-wrap">
         {(t.image_id || t.hotel_image_id) ? <div className="scene photo"><img src={photoUrl(t.image_id || t.hotel_image_id)} alt={t.name} loading="lazy" /></div> : <div className={'scene t' + ((i % 3) + 1)}><i /></div>}
-        <button type="button" className={'fav' + (fav ? ' on' : '')} aria-pressed={fav} aria-label={fav ? 'Remove from saved hotels' : 'Save this hotel'} title={fav ? 'Saved' : 'Save this hotel'} onClick={() => onFav(Number(t.hotel_id))}>
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d={HEART} /></svg></button>
+        <button type="button" className={'fav' + (fav ? ' on' : '')} aria-pressed={fav} aria-label={fav ? 'Remove from favourites' : 'Add to favourites'} title={fav ? 'Favourite' : 'Add to favourites'} onClick={() => onFav(Number(t.hotel_id))}
+          style={fav ? { color: '#E8930C', borderColor: '#F7D79A', background: '#FFF6E3' } : undefined}>
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style={{ fill: fav ? 'currentColor' : 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinejoin: 'round' }}><path d={STAR} /></svg></button>
       </div>
       <div className="body">
         <div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>{t.hotel_name} · {t.hotel_area}</div>
@@ -223,8 +224,7 @@ export function SearchPage() {
   const hot = useHotels();
   const [st, setSt] = useState({ loading: true });
   const { user } = useContext(SiteCtx); const guest = !!user && user.role === 'guest';
-  const [favs, setFavs] = useState([]); const [offers, setOffers] = useState([]);
-  useEffect(() => { api('GET', '/offers').then((j) => setOffers(j.data || []), () => {}); }, []);
+  const [favs, setFavs] = useState([]); const [onlyFav, setOnlyFav] = useState(false);
   useEffect(() => {
     if (!guest) { setFavs([]); return; }
     api('GET', '/guest/favorites').then((j) => setFavs(j.data || []), () => {});
@@ -242,7 +242,9 @@ export function SearchPage() {
       .catch((e) => live && setSt({ error: e.message }));
     return () => { live = false; };
   }, [key]); // eslint-disable-line
-  const rows = st.data || [];
+  const all = st.data || [];
+  const isFav = (t) => favs.includes(Number(t.hotel_id));
+  const rows = onlyFav ? all.filter(isFav) : all;
   const fmt = (s) => new Date(String(s).replace(' ', 'T')).toLocaleString('en-PH', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
   return (
     <Layout>
@@ -253,10 +255,13 @@ export function SearchPage() {
         {st.data && <>
           <h2>{rows.length} room type{rows.length === 1 ? '' : 's'} in {new Set(rows.map((r) => r.hotel_id)).size} hotel{new Set(rows.map((r) => r.hotel_id)).size === 1 ? '' : 's'} for {fmt(st.w.start)} – {fmt(st.w.end)}</h2>
           <div className="flash info">You choose a room <b>type</b>. The exact room is <b>assigned automatically</b> and sent to you by email.</div>
-          {offers.length > 0 && <div className="offers-strip"><span className="small mute">Vouchers you can use:</span>{offers.map((o) => <span className="chip" key={o.code} title={o.title}><b>{o.code}</b> · {o.kind === 'percent' ? o.value + '% off' : peso(o.value) + ' off'}</span>)}</div>}
+          <div style={{ margin: '14px 0 0' }}><button type="button" className="btn btn-pill" aria-pressed={onlyFav}
+            style={onlyFav ? { background: 'var(--teal)', color: '#fff', boxShadow: 'none' } : { color: 'var(--mute)' }}
+            onClick={() => { if (!guest) { location.hash = '#/login'; return; } setOnlyFav(!onlyFav); }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill={onlyFav ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d={STAR} /></svg>Favourite</button></div>
           <div className="stack" style={{ marginTop: 20 }}>
             {rows.map((t, i) => <RoomResult key={t.id} t={t} i={i} p={p} hours={st.w.hours} fav={favs.includes(Number(t.hotel_id))} onFav={toggleFav} />)}
-            {rows.length === 0 && <div className="card center">No room type fits that. Try fewer guests or another area.</div>}
+            {rows.length === 0 && <div className="card center">{onlyFav ? 'None of your favourite hotels has a free room for that time. Tap the heart on a hotel to add it, or turn off the Favourite filter.' : 'No room type fits that. Try fewer guests or another area.'}</div>}
           </div>
         </>}
       </div>

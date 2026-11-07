@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { Icon } from '../icons';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { Loading, Pill, Top, label, peso, stay, useLoad } from '../ui';
 
@@ -69,6 +68,31 @@ function HotelInfo({ name, rooms, stats }) {
   );
 }
 
+function HotelGroups({ groups, stat }) {
+  // "All hotels" view: show one hotel at a time inside a scroll box; scroll down to see the rest.
+  const box = useRef(null);
+  const [h, setH] = useState(0);
+  const firstId = groups.length ? groups[0].h.id : 0;
+  useLayoutEffect(() => {
+    const first = box.current && box.current.firstElementChild;
+    if (!first) return undefined;
+    const measure = () => setH(first.offsetHeight + 2);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(first);
+    return () => ro.disconnect();
+  }, [firstId, groups.length]);
+  return (
+    <div className="hgroups" ref={box} style={h ? { maxHeight: h } : undefined} tabIndex={0} aria-label="Hotels - scroll to see more">
+      {groups.map((g) => (
+        <div key={g.h.id} className="hgroup"><h3>{g.h.name}</h3>
+          <div className="tiles">{g.rooms.map((r) => <Tile key={r.id} r={r} />)}<HotelInfo name={g.h.area || g.h.name} rooms={g.rooms} stats={stat(g.h.id)} /></div></div>
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard({ user, onBadges }) {
   const d = useLoad(() => api('GET', '/dashboard'), [], 'dashboard');
   const [hid, setHid] = useState(saved);
@@ -89,7 +113,6 @@ export default function Dashboard({ user, onBadges }) {
   return (
     <>
       <Top title="Dashboard" sub={(user && user.hotel_name ? user.hotel_name + ' · ' : user && user.platform ? (activeId ? x.hotels.find((h) => h.id === activeId).name : 'All hotels') + ' · ' : '') + today}>
-        <button className="btn ghost" onClick={d.reload}><Icon n="refresh" size={15} /> Refresh</button>
         <a className="btn" href="#/bookings/new">+ Walk-in booking</a>
       </Top>
       <Loading state={d} />
@@ -103,18 +126,15 @@ export default function Dashboard({ user, onBadges }) {
           )}
           <div className="stats">
             <div className="card stat3"><div><div className="l">Occupancy</div><div className="v">{count('occupied')} / {board.length}</div><div className="s">rooms in use</div></div><Donut pct={pct} /></div>
-            <div className="card stat3"><div><div className="l">Available now</div><div className="v">{count('available')}</div><div className="s">of {board.length} rooms</div></div><span className="si t2"><Icon n="ready" size={22} /></span></div>
-            <div className="card stat3"><div><div className="l">Check-ins next 2 hrs</div><div className="v">{activeId ? upcoming.length : x.checkins_soon}</div><div className="s">{(activeId ? upcoming.length : x.checkins_soon) ? 'Get the keys ready' : 'Nothing soon'}</div></div><span className="si t3"><Icon n="clock" size={22} /></span></div>
-            <div className="card stat3 dark"><div><div className="l">Today's revenue</div><div className="v">{peso(revenue)}</div><div className="s">Paid bookings</div></div><span className="si t4"><Icon n="peso" size={22} /></span></div>
+            <div className="card stat3"><div><div className="l">Available now</div><div className="v">{count('available')}</div><div className="s">of {board.length} rooms</div></div></div>
+            <div className="card stat3"><div><div className="l">Check-ins next 2 hrs</div><div className="v">{activeId ? upcoming.length : x.checkins_soon}</div><div className="s">{(activeId ? upcoming.length : x.checkins_soon) ? 'Get the keys ready' : 'Nothing soon'}</div></div></div>
+            <div className="card stat3 dark"><div><div className="l">Today's revenue</div><div className="v">{peso(revenue)}</div><div className="s">Paid bookings</div></div></div>
           </div>
           <div className="dash">
             <div className="card">
               <div className="row between" style={{ marginBottom: 14 }}><h2>Room availability</h2>
                 <div className="legend"><i className="available" />Available<i className="reserved" />Reserved<i className="occupied" />Occupied<i className="cleaning" />Other</div></div>
-              {groups ? groups.map((g) => (
-                <div key={g.h.id} className="hgroup"><h3>{g.h.name}</h3>
-                  <div className="tiles">{g.rooms.map((r) => <Tile key={r.id} r={r} />)}<HotelInfo name={g.h.area || g.h.name} rooms={g.rooms} stats={stat(g.h.id)} /></div></div>
-              )) : <div className="tiles">{board.map((r) => <Tile key={r.id} r={r} hotel={!!(user && user.platform)} />)}{!groups && board.length > 0 && <HotelInfo name={user.hotel_name || 'Your hotel'} rooms={board} stats={{ revenue_today: revenue }} />}</div>}
+              {groups ? <HotelGroups groups={groups} stat={stat} /> : <div className="tiles">{board.map((r) => <Tile key={r.id} r={r} hotel={!!(user && user.platform)} />)}{!groups && board.length > 0 && <HotelInfo name={user.hotel_name || 'Your hotel'} rooms={board} stats={{ revenue_today: revenue }} />}</div>}
               {board.length === 0 && <p className="muted">No rooms yet. Add rooms under Rooms.</p>}
             </div>
             <div className="stack">
