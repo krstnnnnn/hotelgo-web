@@ -212,23 +212,49 @@ export function GuestPassword() {
 /* ------------------------------------------------------------------ checkout: details + payment method */
 const ID_TYPES = ["Driver's license", 'Passport', 'UMID', 'National ID', 'Other government ID'];
 const METHODS = [['ewallet', 'wallet', 'E-wallet', 'Pay with your wallet app'], ['card', 'card', 'Credit / debit card', 'Visa, Mastercard'], ['bank', 'bank', 'Bank / OTC', 'Transfer or pay at a store']];
+const PREF_EXTRAS = [
+  ['high_floor', 'I’d like a room on a high floor'], ['luxury_storage', 'I’d like luggage storage'],
+  ['near_elevator', 'I’d like to be near the elevator'], ['away_elevator', 'I’d like to be away from the elevator'],
+  ['quiet_room', 'I’d like a quiet room'], ['honeymoon', 'I’d like honeymoon arrangements'],
+  ['baby_cot', 'I’d like a baby cot (additional charges may apply)'], ['car_parking', 'I’d like car parking'],
+  ['airport_transfer', 'I’d like an airport transfer'],
+];
+const hourLabel = (h) => new Date(2000, 0, 1, h).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+const ETA_OPTIONS = [['unknown', "I don't know"], ['00:00', 'After midnight']].concat(
+  Array.from({ length: 12 }, (_, i) => [String(12 + i).padStart(2, '0') + ':00', hourLabel(12 + i)]));
+const splitName = (full) => { const p = String(full || '').trim().split(/\s+/); return { first: p[0] || '', last: p.slice(1).join(' ') }; };
+const localMobile = (m) => String(m || '').replace(/^\+?63/, '').replace(/\D/g, '').replace(/^0/, '');
+
+/* Checkout in the Agoda order: lead guest, valid ID, special requests, coupons, payment. The price summary sits on the right. */
 export function Checkout({ user }) {
   const q = useQuery(); const [d, setD] = useState(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
-  const [f, setF] = useState({ name: user.full_name || '', mobile: user.mobile || '', email: user.email || '', id_type: ID_TYPES[0], id_number: '', pay_method: 'ewallet', agree: false });
+  const nm = splitName(user.full_name);
+  const [f, setF] = useState({ first: nm.first, last: nm.last, email: user.email || '', mobile: localMobile(user.mobile), pay_method: 'ewallet', agree: false,
+    room_pref: '', bed: '', extras: [], more: false, eta: 'unknown', special: '' });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-  const [code, setCode] = useState(''); const [applied, setApplied] = useState(''); const [offers, setOffers] = useState([]);   // promo code: typed, applied (asked from the server), public offers to tap
+  const toggleExtra = (k) => setF({ ...f, extras: f.extras.includes(k) ? f.extras.filter((x) => x !== k) : [...f.extras, k] });
+  const [code, setCode] = useState(''); const [applied, setApplied] = useState(''); const [offers, setOffers] = useState([]); const [showAll, setShowAll] = useState(false);   // promo code: typed, applied (checked on the server), public offers to tap
   useEffect(() => { api('GET', '/offers').then((j) => setOffers(j.data || []), () => {}); }, []);
   const key = JSON.stringify(q);
+  /* the best voucher the server applied is shown in the promo box too (the price already uses it) */
+  useEffect(() => { if (d && d.coupon && d.coupon.ok && d.coupon.auto && applied === '') setCode(d.coupon.code); }, [d, applied]);
   useEffect(() => {
     api('GET', '/guest/quote?' + new URLSearchParams(applied ? { ...q, coupon: applied } : q)).then((j) => { setD(j); if (j.free < 1) setErr('Sorry, that room type is fully booked for your time.'); }, (e) => setErr(e.message));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, applied]);
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr('');
-    try { const j = await api('POST', '/guest/bookings', { ...q, ...f, coupon: applied ? (d.coupon && d.coupon.ok ? d.coupon.code : applied) : '' }); go('pay/' + j.booking_ref); } catch (x) { setErr(x.message); setBusy(false); }
+    const body = { ...q, name: (f.first + ' ' + f.last).trim(), mobile: '+63' + f.mobile, email: f.email,
+      pay_method: f.pay_method, agree: f.agree,
+      coupon: applied ? (d.coupon && d.coupon.ok ? d.coupon.code : applied) : '',
+      preferences: { room: f.room_pref, bed: f.bed, extras: f.extras }, special_requests: f.special, arrival_eta: f.eta };
+    try { const j = await api('POST', '/guest/bookings', body); go('pay/' + j.booking_ref); } catch (x) { setErr(x.message); setBusy(false); }
   };
   if (!d) return <div className="container section"><Err text={err || ''} />{!err && <div className="card center mute">Loading…</div>}{err && <p><a href="#/search">← Search again</a></p>}</div>;
   const { type: t, window: w, search: p } = d; const first = String(user.full_name || '').split(' ')[0];
+  const hasCoupon = d.coupon && d.coupon.ok;
+  const ordered = hasCoupon ? [...offers].sort((a, b) => (b.code === d.coupon.code) - (a.code === d.coupon.code)) : offers;
+  const shown = showAll ? ordered : ordered.slice(0, 2);
   return (
     <div className="container section" style={{ paddingTop: 24 }}>
       <div className="steps" aria-label="Booking steps" style={{ marginBottom: 24 }}>
@@ -238,25 +264,30 @@ export function Checkout({ user }) {
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 380px', alignItems: 'start' }}>
         <form className="stack" onSubmit={submit}>
           <Err text={err} />
-          <div className="card"><div className="ctitle"><span className="ico"><Ico n="user" color="#0E7C86" /></span><h3>Guest details</h3></div>
+          <div className="card"><div className="ctitle"><span className="ico"><Ico n="user" color="#0E7C86" /></span><h3>Who’s the lead guest?</h3></div>
+            <p className="small mute" style={{ marginTop: 0 }}>Name must match your passport or photo ID used at check-in.</p>
             <div className="grid g2">
-              <Field id="name" label="Full name"><input id="name" required maxLength={120} value={f.name} onChange={set('name')} /></Field>
-              <Field id="mobile" label="Mobile number"><input id="mobile" required maxLength={20} value={f.mobile} onChange={set('mobile')} /></Field>
+              <Field id="first" label="First name"><input id="first" required maxLength={60} value={f.first} onChange={set('first')} /></Field>
+              <Field id="last" label="Last name"><input id="last" required maxLength={60} value={f.last} onChange={set('last')} /></Field>
               <Field id="email" label="Email"><input id="email" type="email" required maxLength={150} value={f.email} onChange={set('email')} /></Field>
-              <Field id="id_type" label="Valid ID"><select id="id_type" required value={f.id_type} onChange={set('id_type')}>{ID_TYPES.map((x) => <option key={x}>{x}</option>)}</select></Field>
-              <Field id="id_number" label="ID number" help={<>For your privacy we save only the <b>last 4 characters</b> of your ID number.</>}><input id="id_number" required maxLength={30} autoComplete="off" value={f.id_number} onChange={set('id_number')} /></Field>
+              <Field id="mobile" label="Mobile number"><div className="phone"><span className="cc">+63</span><input id="mobile" required inputMode="tel" maxLength={12} value={f.mobile} onChange={set('mobile')} placeholder="917 123 4567" /></div></Field>
             </div>
-            <div className="hint"><Ico n="bell" color="#4F6574" size={18} /><span>We will email your booking confirmation.</span></div></div>
-          <div className="card"><div className="ctitle"><span className="ico"><Ico n="bell" color="#0E7C86" /></span><h3>Promo code</h3></div>
-            <div className="row" style={{ gap: 8 }}>
-              <input id="coupon" aria-label="Promo code" placeholder="Have a code? e.g. WELCOME10" maxLength={20} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-              <button className="btn" type="button" onClick={() => setApplied(code.trim())} disabled={!code.trim()}>Apply</button>
-              {d.coupon && d.coupon.ok && <button className="btn" type="button" onClick={() => { setApplied('-'); setCode(''); }}>Remove</button>}
+            <div className="hint"><Ico n="bell" color="#4F6574" size={18} /><span>We will email your booking confirmation and use your mobile number for any reminders.</span></div></div>
+          <div className="card"><div className="ctitle"><span className="ico"><Ico n="bell" color="#0E7C86" /></span><h3>Special requests</h3></div>
+            <p className="small mute" style={{ marginTop: 0 }}>Subject to availability. Your selections are sent to the hotel after you book.</p>
+            <div className="pref-two">
+              <fieldset><legend>Which type of room would you prefer?</legend>
+                {[['', 'No preference'], ['non_smoking', 'Non-smoking'], ['smoking', 'Smoking']].map(([v, l]) => (
+                  <label className="pref-opt" key={'r' + v}><input type="radio" name="room_pref" value={v} checked={f.room_pref === v} onChange={set('room_pref')} /> {l}</label>))}</fieldset>
+              <fieldset><legend>Which bed setup would you prefer?</legend>
+                {[['', 'No preference'], ['large', 'I’d like a large bed'], ['twin', 'I’d like twin beds']].map(([v, l]) => (
+                  <label className="pref-opt" key={'b' + v}><input type="radio" name="bed" value={v} checked={f.bed === v} onChange={set('bed')} /> {l}</label>))}</fieldset>
             </div>
-            {d.coupon && d.coupon.ok && <div className="flash ok small" style={{ marginTop: 10 }}>{d.coupon.auto ? <>We applied the best voucher for you: <b>{d.coupon.code}</b> · {d.coupon.title}.</> : <>Code <b>{d.coupon.code}</b> applied: {d.coupon.title}.</>} You save <b>{peso(d.coupon.discount)}</b>.</div>}
-            {applied === '-' && <div className="small mute" style={{ marginTop: 10 }}>Voucher removed. <button type="button" className="linkbtn" onClick={() => setApplied('')}>Use my best voucher again</button></div>}
-            {d.coupon && !d.coupon.ok && <div className="flash bad small" role="alert" style={{ marginTop: 10 }}>{d.coupon.message}</div>}
-            {offers.length > 0 && <div className="small mute" style={{ marginTop: 10 }}>Current offers: {offers.map((o) => <button key={o.code} type="button" className="chip" title={o.title} onClick={() => { setCode(o.code); setApplied(o.code); }} style={{ marginRight: 6 }}>{o.code} · {o.kind === 'percent' ? o.value + '% off' : peso(o.value) + ' off'}</button>)}</div>}
+            <button type="button" className="linkbtn" onClick={() => setF({ ...f, more: !f.more })} aria-expanded={f.more}>{f.more ? 'Hide additional preferences' : 'Show additional preferences'}</button>
+            {f.more && <div className="pref-grid">{PREF_EXTRAS.map(([k, l]) => (
+              <label className="pref-opt" key={k}><input type="checkbox" checked={f.extras.includes(k)} onChange={() => toggleExtra(k)} /> {l}</label>))}</div>}
+            <Field id="special" label="Any additional requests?" help="Let us know in English. Up to 500 characters."><textarea id="special" rows={3} maxLength={500} value={f.special} onChange={set('special')} /></Field>
+            <Field id="eta" label="Expected arrival time" help="We let the hotel know when to expect you."><select id="eta" value={f.eta} onChange={set('eta')}>{ETA_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
           </div>
           <div className="card"><div className="ctitle"><span className="ico"><Ico n="card" color="#0E7C86" /></span><h3>Payment method</h3><span className="lockline"><Ico n="lock" color="#4F6574" size={15} />Encrypted &amp; secure</span></div>
             <div className="pay-grid" role="radiogroup" aria-label="Payment method">
@@ -269,17 +300,43 @@ export function Checkout({ user }) {
             <div className="check" style={{ margin: '18px 0 16px' }}><input id="agree" type="checkbox" required checked={f.agree} onChange={(e) => setF({ ...f, agree: e.target.checked })} /><label htmlFor="agree">I agree to the <a href="#/house-rules">house rules</a>, <a href="#/cancellation-policy">cancellation policy</a> and <a href="#/privacy">privacy notice</a>.</label></div>
             <button className="btn btn-block btn-lg" type="submit" disabled={busy || d.free < 1}><Ico n="lock" color="#fff" size={18} /> {busy ? 'Please wait…' : 'Pay ' + peso(d.total) + ' and confirm'}</button></div>
         </form>
+        <div className="stack" style={{ position: 'sticky', top: 96 }}>
         <aside className="card">
           {(t.image_id || t.hotel_image_id) ? <div className="scene photo" style={{ borderRadius: 16, marginBottom: 16 }}><img src={photoUrl(t.image_id || t.hotel_image_id)} alt={t.name} /></div> : <div className="scene t2" style={{ borderRadius: 16, marginBottom: 16 }}><i /></div>}
           <h3>{t.name} <VipBadge t={t} /></h3><p className="mute">{t.hotel_name} · {t.hotel_area || 'Puerto Galera'}</p><Included t={t} />
           <div className="stack small">
-            <div className="row between"><span className="mute">Stay</span><b>{stayLabel({ stay_type: p.stay, hours: w.hours })}</b></div>
-            <div className="row between"><span className="mute">Check-in</span><b>{fmtDt(w.start)}</b></div><div className="row between"><span className="mute">Check-out</span><b>{fmtDt(w.end)}</b></div>
-            <div className="row between"><span className="mute">Guests</span><b>{p.guests}</b></div><div className="row between"><span className="mute">Room</span><b style={{ color: 'var(--teal)' }}>Assigned after payment</b></div><hr />
-            <div className="row between"><span className="mute">Room rate</span><span>{peso(d.rate)}</span></div>{d.discount > 0 && <div className="row between"><span className="mute">Promo {d.coupon.code}</span><span style={{ color: 'var(--teal)' }}>− {peso(d.discount)}</span></div>}<div className="row between"><span className="mute">Online booking fee</span><span>{peso(d.fee)}</span></div>
-            <div className="row between"><b>Total</b><span className="price">{peso(d.total)}</span></div></div>
+            <div className="row between"><span className="mute">Check-in</span><b>{fmtDt(w.start)}</b></div>
+            <div className="row between"><span className="mute">Check-out</span><b>{fmtDt(w.end)}</b></div>
+            <div className="row between"><span className="mute">Stay</span><b>{stayLabel({ stay_type: p.stay, hours: w.hours })} · {p.guests} guests</b></div>
+            <div className="row between"><span className="mute">Room</span><b style={{ color: 'var(--teal)' }}>Assigned after payment</b></div><hr />
+            <div className="price-rows">
+              <div className="row between"><span className="mute">Room rate</span><span>{peso(d.rate)}</span></div>
+              {d.discount > 0 && <div className="row between"><span className="mute">Voucher {d.coupon.code}</span><span className="save">− {peso(d.discount)}</span></div>}
+              <div className="row between"><span className="mute">Online booking fee</span><span>{peso(d.fee)}</span></div>
+            </div>
+            <div className="row between total"><b>Total</b><span className="price">{peso(d.total)}</span></div></div>
           <div className="flash ok small">Free cancellation until {d.cancel_hours} hours before check-in.</div>
         </aside>
+          <div className="card coupons-side"><div className="ctitle"><span className="ico"><Ico n="bell" color="#0E7C86" /></span><h3>Coupons</h3></div>
+            <div className="row" style={{ gap: 8 }}>
+              <input id="coupon" aria-label="Promo code" placeholder="Have a code? e.g. WELCOME10" maxLength={20} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+              <button className="btn" type="button" onClick={() => setApplied(code.trim())} disabled={!code.trim()}>Apply</button>
+              {hasCoupon && <button className="btn" type="button" onClick={() => { setApplied('-'); setCode(''); }}>Remove</button>}
+            </div>
+            {hasCoupon && <div className="flash ok small" style={{ marginTop: 10 }}>{d.coupon.auto ? <>We applied the best voucher for you: <b>{d.coupon.code}</b> · {d.coupon.title}.</> : <>Code <b>{d.coupon.code}</b> applied: {d.coupon.title}.</>} You save <b>{peso(d.coupon.discount)}</b>.</div>}
+            {applied === '-' && <div className="small mute" style={{ marginTop: 10 }}>Voucher removed. <button type="button" className="linkbtn" onClick={() => setApplied('')}>Use my best voucher again</button></div>}
+            {d.coupon && !d.coupon.ok && <div className="flash bad small" role="alert" style={{ marginTop: 10 }}>{d.coupon.message}</div>}
+            {offers.length > 0 && <>
+              <div className="coupon-tiles">{shown.map((o) => (
+                <div className={'coupon-tile' + (hasCoupon && d.coupon.code === o.code ? ' on' : '')} key={o.code}>
+                  <div><b>{o.code}</b><span>{o.kind === 'percent' ? o.value + '% off' : peso(o.value) + ' off'}</span></div>
+                  <small className="mute">{o.title}</small>
+                  <button type="button" className="btn btn-sm" onClick={() => { setCode(o.code); setApplied(o.code); }}>{hasCoupon && d.coupon.code === o.code ? 'Applied' : 'Use'}</button>
+                </div>))}</div>
+              {offers.length > 2 && <button type="button" className="linkbtn" style={{ marginTop: 10 }} onClick={() => setShowAll(!showAll)} aria-expanded={showAll}>{showAll ? 'Show fewer vouchers' : 'View all ' + offers.length + ' vouchers'}</button>}
+            </>}
+          </div>
+        </div>
       </div>
     </div>
   );
