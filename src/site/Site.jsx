@@ -115,6 +115,47 @@ const usePhotos = () => {
 };
 
 /* ---- room search results ---- */
+/* the heart icon (save a hotel) */
+const HEART = 'M12 21s-7.5-4.6-9.6-9.1C.9 8.5 2.6 4.8 6.2 4.5c2-.2 3.4.9 4.3 2.2.9-1.3 2.3-2.4 4.3-2.2 3.6.3 5.3 4 3.8 7.4C19.5 16.4 12 21 12 21z';
+
+/* one room type in the results: photo and facts on the left, the price panel on the right (rating, someone booked, voucher, favourite) */
+function RoomResult({ t, i, p, hours, fav, onFav }) {
+  const [open, setOpen] = useState(false); const [reviews, setReviews] = useState(null);
+  const r = t.rating || { count: 0, avg: null, label: 'New' };
+  const v = t.voucher; const h = t.booked_hours_ago;
+  const toggleReviews = async () => {
+    if (!open && reviews === null) {
+      try { const j = await api('GET', '/hotels/' + t.hotel_id + '/reviews'); setReviews(j.data || []); } catch (e) { setReviews([]); }
+    }
+    setOpen(!open);
+  };
+  return (
+    <div className={'result' + (t.free < 1 ? ' full' : '')}>{(t.image_id || t.hotel_image_id) ? <div className="scene photo"><img src={photoUrl(t.image_id || t.hotel_image_id)} alt={t.name} loading="lazy" /></div> : <div className={'scene t' + ((i % 3) + 1)}><i /></div>}
+      <div className="body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>{t.hotel_name} · {t.hotel_area}</div>
+        <div className="row"><h3 style={{ margin: 0 }}>{t.name}</h3><VipBadge t={t} />
+          {t.free < 1 ? <span className="pill gray">Fully booked</span> : t.free <= 2 ? <span className="pill warn">Only {t.free} left</span> : <span className="pill ok">{t.free} rooms free</span>}</div>
+        <div className="rate-line">{r.count > 0
+          ? <><span className="rate-badge">{Number(r.avg).toFixed(1)}</span><b>{r.label}</b><span className="mute"> · {r.count} review{r.count === 1 ? '' : 's'}</span></>
+          : <span className="mute">New on HOTELGO · no reviews yet</span>}
+          {h !== null && h !== undefined && <span className="pill hot">Someone booked {h < 1 ? 'less than an hour ago' : h + (h === 1 ? ' hr' : ' hrs') + ' ago'}</span>}</div>
+        <p className="mute">{t.description}</p><Included t={t} />
+        <div className="chips">{String(t.amenities || '').split(',').map((a) => a.trim()).filter(Boolean).map((a) => <span className="chip" key={a}>{a}</span>)}<span className="chip">Up to {t.max_guests} guests</span></div>
+        <p className="small mute" style={{ margin: '10px 0 0' }}>Free cancellation until {cfg.site.cancelHours} hours before check-in</p>
+        {r.count > 0 && <button type="button" className="linkbtn" onClick={toggleReviews}>{open ? 'Hide reviews' : 'Read ' + r.count + ' review' + (r.count === 1 ? '' : 's')}</button>}
+        {open && <div className="reviews">{reviews === null ? <span className="small mute">Loading…</span> : reviews.map((x, k) => (
+          <div className="rv" key={k}><b>{'★'.repeat(x.rating)}{'☆'.repeat(5 - x.rating)}</b> <span className="small mute">{x.guest} · {String(x.created_at).slice(0, 10)}</span><p>{x.comment || 'Rated without a comment.'}</p></div>))}</div>}
+      </div>
+      <div className="buy">
+        <button type="button" className={'fav' + (fav ? ' on' : '')} aria-pressed={fav} aria-label={fav ? 'Remove from saved hotels' : 'Save this hotel'} title={fav ? 'Saved' : 'Save this hotel'} onClick={() => onFav(Number(t.hotel_id))}>
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d={HEART} /></svg></button>
+        <div className="price">{v ? <><s className="was">{peso(t.price)}</s> {peso(v.final)}</> : peso(t.price)}</div>
+        <div className="small mute">{p.stay === 'overnight' ? 'overnight' : p.stay === 'daily' ? p.days + (Number(p.days) === 1 ? ' day' : ' days') + ' · ' + peso(t.price_daily) + ' per day' : hours + ' hrs'} · fee added at checkout</div>
+        {v && <div className="voucher">Voucher <b>{v.code}</b> applied · you save {peso(v.discount)}</div>}
+        {t.free > 0 ? <a className="btn" style={{ marginTop: 12 }} href={'#/book?' + new URLSearchParams({ ...p, type: t.id })}>Select room</a> : <span className="small mute">Try another time</span>}
+      </div>
+    </div>
+  );
+}
 export function SearchPage() {
   const raw = new URLSearchParams(location.hash.split('?')[1] || '');
   const p = { stay: ['overnight', 'daily'].includes(raw.get('stay')) ? raw.get('stay') : 'hourly', date: raw.get('date') || slot().date, time: raw.get('time') || slot().time, hours: raw.get('hours') || '3', guests: raw.get('guests') || '2' };
@@ -124,6 +165,19 @@ export function SearchPage() {
   const key = JSON.stringify(p);
   const hot = useHotels();
   const [st, setSt] = useState({ loading: true });
+  const { user } = useContext(SiteCtx); const guest = !!user && user.role === 'guest';
+  const [favs, setFavs] = useState([]); const [offers, setOffers] = useState([]);
+  useEffect(() => { api('GET', '/offers').then((j) => setOffers(j.data || []), () => {}); }, []);
+  useEffect(() => {
+    if (!guest) { setFavs([]); return; }
+    api('GET', '/guest/favorites').then((j) => setFavs(j.data || []), () => {});
+  }, [guest]);
+  /* the heart: needs a sign-in; otherwise the guest is sent to sign in */
+  const toggleFav = async (hotelId) => {
+    if (!guest) { location.hash = '#/login'; return; }
+    try { await api('POST', '/guest/favorites/' + hotelId); const j = await api('GET', '/guest/favorites'); setFavs(j.data || []); }
+    catch (e) { /* keep the list as it was */ }
+  };
   useEffect(() => {
     let live = true; setSt({ loading: true });
     api('GET', '/availability?' + new URLSearchParams(p))
@@ -142,17 +196,9 @@ export function SearchPage() {
         {st.data && <>
           <h2>{rows.length} room type{rows.length === 1 ? '' : 's'} in {new Set(rows.map((r) => r.hotel_id)).size} hotel{new Set(rows.map((r) => r.hotel_id)).size === 1 ? '' : 's'} for {fmt(st.w.start)} – {fmt(st.w.end)}</h2>
           <div className="flash info">You choose a room <b>type</b>. The exact room is <b>assigned automatically</b> and sent to you by email.</div>
+          {offers.length > 0 && <div className="offers-strip"><span className="small mute">Vouchers you can use:</span>{offers.map((o) => <span className="chip" key={o.code} title={o.title}><b>{o.code}</b> · {o.kind === 'percent' ? o.value + '% off' : peso(o.value) + ' off'}</span>)}</div>}
           <div className="stack" style={{ marginTop: 20 }}>
-            {rows.map((t, i) => (
-              <div className={'result' + (t.free < 1 ? ' full' : '')} key={t.id}>{(t.image_id || t.hotel_image_id) ? <div className="scene photo"><img src={photoUrl(t.image_id || t.hotel_image_id)} alt={t.name} loading="lazy" /></div> : <div className={'scene t' + ((i % 3) + 1)}><i /></div>}
-                <div className="body"><div className="small mute" style={{ fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>{t.hotel_name} · {t.hotel_area}</div><div className="row"><h3 style={{ margin: 0 }}>{t.name}</h3><VipBadge t={t} />
-                  {t.free < 1 ? <span className="pill gray">Fully booked</span> : t.free <= 2 ? <span className="pill warn">Only {t.free} left</span> : <span className="pill ok">{t.free} rooms free</span>}</div>
-                  <p className="mute">{t.description}</p><Included t={t} />
-                  <div className="chips">{String(t.amenities || '').split(',').map((a) => a.trim()).filter(Boolean).map((a) => <span className="chip" key={a}>{a}</span>)}<span className="chip">Up to {t.max_guests} guests</span></div>
-                  <p className="small mute" style={{ margin: '10px 0 0' }}>Free cancellation until {cfg.site.cancelHours} hours before check-in</p></div>
-                <div className="buy"><div className="price">{peso(t.price)}</div><div className="small mute">{p.stay === 'overnight' ? 'overnight' : p.stay === 'daily' ? p.days + (Number(p.days) === 1 ? ' day' : ' days') + ' · ' + peso(t.price_daily) + ' per day' : st.w.hours + ' hrs'} · fee added at checkout</div>
-                  {t.free > 0 ? <a className="btn" style={{ marginTop: 12 }} href={'#/book?' + new URLSearchParams({ ...p, type: t.id })}>Select room</a> : <span className="small mute">Try another time</span>}</div></div>
-            ))}
+            {rows.map((t, i) => <RoomResult key={t.id} t={t} i={i} p={p} hours={st.w.hours} fav={favs.includes(Number(t.hotel_id))} onFav={toggleFav} />)}
             {rows.length === 0 && <div className="card center">No room type fits that. Try fewer guests or another area.</div>}
           </div>
         </>}

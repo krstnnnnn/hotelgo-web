@@ -225,7 +225,7 @@ export function Checkout({ user }) {
   }, [key, applied]);
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr('');
-    try { const j = await api('POST', '/guest/bookings', { ...q, ...f, coupon: d.coupon && d.coupon.ok ? d.coupon.code : '' }); go('pay/' + j.booking_ref); } catch (x) { setErr(x.message); setBusy(false); }
+    try { const j = await api('POST', '/guest/bookings', { ...q, ...f, coupon: applied ? (d.coupon && d.coupon.ok ? d.coupon.code : applied) : '' }); go('pay/' + j.booking_ref); } catch (x) { setErr(x.message); setBusy(false); }
   };
   if (!d) return <div className="container section"><Err text={err || ''} />{!err && <div className="card center mute">Loading…</div>}{err && <p><a href="#/search">← Search again</a></p>}</div>;
   const { type: t, window: w, search: p } = d; const first = String(user.full_name || '').split(' ')[0];
@@ -251,9 +251,10 @@ export function Checkout({ user }) {
             <div className="row" style={{ gap: 8 }}>
               <input id="coupon" aria-label="Promo code" placeholder="Have a code? e.g. WELCOME10" maxLength={20} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
               <button className="btn" type="button" onClick={() => setApplied(code.trim())} disabled={!code.trim()}>Apply</button>
-              {applied && <button className="btn" type="button" onClick={() => { setApplied(''); setCode(''); }}>Remove</button>}
+              {d.coupon && d.coupon.ok && <button className="btn" type="button" onClick={() => { setApplied('-'); setCode(''); }}>Remove</button>}
             </div>
-            {d.coupon && d.coupon.ok && <div className="flash ok small" style={{ marginTop: 10 }}>Code <b>{d.coupon.code}</b> applied: {d.coupon.title}. You save <b>{peso(d.coupon.discount)}</b>.</div>}
+            {d.coupon && d.coupon.ok && <div className="flash ok small" style={{ marginTop: 10 }}>{d.coupon.auto ? <>We applied the best voucher for you: <b>{d.coupon.code}</b> · {d.coupon.title}.</> : <>Code <b>{d.coupon.code}</b> applied: {d.coupon.title}.</>} You save <b>{peso(d.coupon.discount)}</b>.</div>}
+            {applied === '-' && <div className="small mute" style={{ marginTop: 10 }}>Voucher removed. <button type="button" className="linkbtn" onClick={() => setApplied('')}>Use my best voucher again</button></div>}
             {d.coupon && !d.coupon.ok && <div className="flash bad small" role="alert" style={{ marginTop: 10 }}>{d.coupon.message}</div>}
             {offers.length > 0 && <div className="small mute" style={{ marginTop: 10 }}>Current offers: {offers.map((o) => <button key={o.code} type="button" className="chip" title={o.title} onClick={() => { setCode(o.code); setApplied(o.code); }} style={{ marginRight: 6 }}>{o.code} · {o.kind === 'percent' ? o.value + '% off' : peso(o.value) + ' off'}</button>)}</div>}
           </div>
@@ -455,8 +456,36 @@ export function BookingPage({ bookingRef }) {
             <a className="btn btn-pill btn-block" style={{ marginTop: 8 }} target="_blank" rel="noopener noreferrer" href={gcal}>Open in Google Calendar</a></div>
             <div className="remind"><Ico n="bell" color="#7A4B00" size={20} /><span>Your calendar reminder goes off at <b>{remind}</b>, 30 minutes before check-in.</span></div></>}
         </aside></div></div>
+        {d.review && <RateStay bookingRef={b.booking_ref} review={d.review} onSaved={() => { flash('ok', 'Thank you! Your rating is now shown on the hotel page.'); load(); }} />}
     </>
   );
+}
+
+/* rate a stay once it has ended: 1 to 5 stars and an optional comment. The server decides who may rate (d.review.can). */
+function RateStay({ bookingRef, review, onSaved }) {
+  const [stars, setStars] = useState(0); const [text, setText] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  if (review.mine) {
+    return (
+      <section className="rate-card"><h3>Your rating</h3>
+        <div className="stars" aria-label={review.mine.rating + ' out of 5 stars'}>{[1, 2, 3, 4, 5].map((n) => <span key={n} className={n <= review.mine.rating ? 'on' : ''}>★</span>)}</div>
+        {review.mine.comment && <p>{review.mine.comment}</p>}
+        <p className="small mute">Thank you for rating your stay.</p></section>);
+  }
+  if (!review.can) return null;
+  const send = async () => {
+    if (!stars) { setErr('Please tap a star rating first.'); return; }
+    setBusy(true); setErr('');
+    try { await api('POST', '/guest/bookings/' + bookingRef + '/review', { rating: stars, comment: text }); onSaved(); }
+    catch (x) { setErr(x.message); setBusy(false); }
+  };
+  return (
+    <section className="rate-card"><h3>How was your stay?</h3><p className="small mute">Your rating helps other guests choose.</p>
+      <div className="stars-input" role="radiogroup" aria-label="Your rating">{[1, 2, 3, 4, 5].map((n) => (
+        <button type="button" key={n} role="radio" aria-checked={stars === n} aria-label={n + (n > 1 ? ' stars' : ' star')} className={n <= stars ? 'on' : ''} onClick={() => setStars(n)}>★</button>))}</div>
+      <textarea maxLength={600} rows={3} placeholder="Tell other guests about the room, the staff and the place (optional)" value={text} onChange={(e) => setText(e.target.value)} />
+      <Err text={err} />
+      <button className="btn" type="button" onClick={send} disabled={busy}>{busy ? 'Sending…' : 'Send rating'}</button>
+    </section>);
 }
 
 /* ------------------------------------------------------------------ change the date or time */

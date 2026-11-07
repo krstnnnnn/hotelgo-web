@@ -270,3 +270,26 @@ section[id]{scroll-margin-top:72px}
 .aus-google{display:flex;justify-content:center;min-height:44px}
 .aus-foot{margin-top:22px}
 @media(max-width:900px){.aus{grid-template-columns:1fr}.aus-left{display:none}.aus-right{min-height:100vh;padding:24px 16px;background:linear-gradient(180deg,#0B2233 0,#0B2233 140px,#E8EEF4 140px)}.aus-card{margin-top:36px}}
+
+/* ---- room results: rating, someone booked, vouchers, saved hotels (added with the ratings update) ---- */
+.offers-strip{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 4px}
+.rate-line{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 6px;font-size:.92rem}
+.rate-badge{display:inline-block;background:var(--teal);color:#fff;font-weight:800;border-radius:8px;padding:3px 8px;font-size:.95rem}
+.pill.hot{background:#FDECEC;color:#B42318;border:1px solid #F7C4C4}
+.linkbtn{background:none;border:0;padding:0;color:var(--teal);font:inherit;font-weight:700;cursor:pointer;text-decoration:underline}
+.reviews{margin-top:10px;border-top:1px solid #E5ECEF;padding-top:10px;display:grid;gap:10px}
+.rv p{margin:4px 0 0}
+.result .buy{position:relative}
+.fav{position:absolute;top:8px;right:8px;width:36px;height:36px;border-radius:50%;border:1px solid #D5DEE3;background:#fff;color:#4F6574;display:grid;place-items:center;cursor:pointer;padding:0}
+.fav svg{fill:none;stroke:currentColor;stroke-width:2}
+.fav.on{color:#E0245E;border-color:#F3B6CC;background:#FFF1F6}
+.fav.on svg{fill:currentColor}
+.was{color:var(--mute);font-size:.95rem;margin-right:4px}
+.voucher{margin-top:6px;background:#DCEFEF;color:#0B5C63;border-radius:10px;padding:6px 10px;font-size:.85rem;max-width:230px}
+.rate-card{background:#fff;border:1px solid #E5ECEF;border-radius:16px;padding:18px 20px;margin-top:20px}
+.rate-card h3{margin:0 0 6px}
+.stars span{font-size:22px;color:#D5DEE3}.stars span.on{color:#F5A524}
+.stars-input{display:flex;gap:6px;margin:10px 0}
+.stars-input button{font-size:30px;line-height:1;background:none;border:0;color:#D5DEE3;cursor:pointer;padding:0 2px}
+.stars-input button.on{color:#F5A524}
+.rate-card textarea{width:100%;margin:6px 0 10px;border:1px solid #D5DEE3;border-radius:12px;padding:10px;font:inherit}
